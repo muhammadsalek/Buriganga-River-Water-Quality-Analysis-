@@ -1,0 +1,5178 @@
+#### Install required packages####
+install.packages("tidyverse")
+install.packages("readxl")
+install.packages("FactoMineR")
+install.packages("factoextra")
+install.packages("purrr")
+install.packages("plotrix")
+install.packages("extrafont")
+#### Load required libraries####
+library(tidyverse)
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(FactoMineR)
+library(factoextra)
+library(officer)
+library(reshape2)
+library(purrr)
+library(plotrix)
+library(dplyr)
+library(flextable)
+library(officer)
+library(extrafont)
+font_import()  # This will take some time to import all fonts
+loadfonts(device = "win")  # Load fonts for Windows
+
+
+#### Read the dataset####
+df <- read_excel("D:\\Water Quality Buriganga\\Copy of Final_Data_Sheet_of_Buriganga_river(2).xlsx")
+
+#### Rename columns to meaningful names####
+colnames(df) <- c(
+  "Location", "Symbol", "Year", "Parameter",
+  "January", "February", "March", "April", 
+  "May", "June", "July", "August", 
+  "September", "October", "November", "December")
+
+# View renamed columns to verify
+print(colnames(df))
+#Inspect Column Data Types:
+str(df)
+sapply(df, class)
+
+#Clean or Convert Column Types
+# Convert all month columns to numeric
+
+# Load necessary libraries
+library(tidyverse)
+library(readxl)
+
+# Read the dataset
+df <- read_excel("D:\\Water Quality Buriganga\\Copy of Final_Data_Sheet_of_Buriganga_river(2).xlsx")
+
+# Rename columns to meaningful names
+colnames(df) <- c(
+  "Location", "Symbol", "Year", "Parameter",
+  "January", "February", "March", "April", 
+  "May", "June", "July", "August", 
+  "September", "October", "November", "December"
+)
+
+
+# Identify non-numeric values in month columns
+non_numeric_entries <- df %>%
+  select(January:December) %>%
+  summarise(across(everything(), ~ sum(is.na(as.numeric(as.character(.))))))
+
+print(non_numeric_entries)
+
+
+# View the dataset
+View(df)
+
+# Check column names to confirm the presence of both original and clean columns
+colnames(df)
+
+
+
+
+
+df <- df %>%
+  select(-January:-December) %>%
+  rename_with(~ gsub("clean_", "", .), starts_with("clean_"))
+
+
+
+
+df <- df %>%
+  select(-starts_with("clean_"))
+
+
+
+
+# Reshape the dataset to tidy format
+tidy_data <- df %>%
+  pivot_longer(
+    cols = January:December,   # Columns to reshape
+    names_to = "Month",        # New column for months
+    values_to = "Value"        # New column for values
+  )
+
+# View the tidy data
+print(tidy_data)
+
+
+
+
+head(tidy_data, 20)  # View the first 20 rows
+View(tidy_data)
+
+
+
+
+tidy_data <- tidy_data %>%
+  fill(Location, Symbol, Parameter, .direction = "down")
+
+
+
+head(tidy_data, 20)  # View the first 20 rows
+
+
+View(tidy_data)
+
+
+tidy_data <- tidy_data %>%
+  filter(Symbol %in% c("L1", "L2", "L3"))
+
+
+
+unique(tidy_data$Symbol)
+
+View(tidy_data)
+
+
+write.csv(tidy_data, "tidy_dataset_L1_to_L3.csv", row.names = FALSE)
+
+
+
+
+
+
+####Basic Exploration####
+#Summary Statistics
+# Summary of the entire dataset
+summary(tidy_data)
+
+# Summary for a specific parameter
+tidy_data %>%
+  filter(Parameter == "pH") %>%
+  summary()
+
+
+#Check Unique Entries:
+unique(tidy_data$Location)
+unique(tidy_data$Parameter)
+
+
+#Handle Missing Values:
+
+
+# Check where NA values occur
+na_values <- tidy_data %>%
+  filter(is.na(Value))
+print(na_values)
+
+# Optionally impute missing values
+tidy_data <- tidy_data %>%
+  group_by(Location, Parameter, Month) %>%
+  mutate(Value = ifelse(is.na(Value), mean(Value, na.rm = TRUE), Value))
+
+
+
+
+
+
+#Carry Forward/Backward
+tidy_data <- tidy_data %>%
+  group_by(Location, Parameter) %>%
+  fill(Value, .direction = "downup")
+
+
+
+
+
+summary(tidy_data)
+sum(is.na(tidy_data))
+
+
+
+
+
+
+
+#Check for Outliers:
+ggplot(tidy_data, aes(x = Parameter, y = Value)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(title = "Distribution of Values by Parameter", x = "Parameter", y = "Value")
+
+
+
+
+
+
+
+
+
+
+
+#Basic Visualizations
+library(ggplot2)
+
+ggplot(tidy_data, aes(x = Month, y = Value, color = Location)) +
+  geom_line() +
+  facet_wrap(~ Parameter, scales = "free_y") +
+  theme_minimal() +
+  labs(
+    title = "Water Quality Trends",
+    y = "Value"
+  ) +
+  theme(
+    axis.text.x = element_blank(),  # Removes x-axis labels
+    axis.title.x = element_blank(),  # Optionally removes x-axis title
+    legend.position = "bottom"  # Moves the legend to the bottom
+  )
+
+
+
+
+####publication ready plot####
+# Load necessary libraries
+library(ggplot2)
+library(ggthemes)
+library(ggpubr)
+library(dplyr)
+
+# Enhanced Boxplot for Outlier Detection
+ggplot(tidy_data, aes(x = Parameter, y = Value, fill = Parameter)) +
+  geom_boxplot(outlier.shape = 21, outlier.fill = "red", outlier.size = 2) +
+  scale_fill_brewer(palette = "Set1") +  # Professional color scheme
+  theme_minimal(base_size = 14) +  # Larger font for readability
+  labs(
+    title = "Distribution of Water Quality Parameters",
+    x = "Parameter",
+    y = "Measured Value"
+  ) +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    panel.grid.major = element_line(color = "gray85")
+  )
+
+# Load required libraries
+library(ggplot2)
+
+# Enhanced Line Plot for Water Quality Trends
+ggplot(tidy_data, aes(x = Month, y = Value, color = Location, group = Location)) +
+  geom_line(linewidth = 1.2) +  # Use linewidth instead of size
+  geom_point(size = 2) +  # Add points for emphasis
+  facet_wrap(~ Parameter, scales = "free_y") +
+  scale_color_manual(values = c("#0072B2", "#D55E00", "#009E73", "#CC79A7", "#E69F00", "#56B4E9")) +  # More colors for additional locations
+  theme_minimal(base_size = 14) +
+  labs(
+    title = "Temporal Trends in Water Quality Across Locations",
+    x = "Month",
+    y = "Measured Value"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+    legend.position = "bottom",
+    panel.grid.major = element_line(color = "gray85")
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+
+ggplot(tidy_data, aes(x = Month, y = Value, color = Location)) +
+  geom_line(size = 1.2) +  # Increase line thickness
+  facet_wrap(~ Parameter, scales = "free_y") +
+  theme_minimal(base_size = 15) +  # Larger base font size for readability
+  labs(
+    title = "Water Quality Trends",
+    y = "Value",
+    x = NULL  # No need for x-axis label
+  ) +
+  theme(
+    axis.text.x = element_blank(),  # Remove x-axis labels
+    axis.title.x = element_blank(),  # Remove x-axis title
+    axis.title.y = element_text(size = 16),  # Larger y-axis title
+    axis.text.y = element_text(size = 14),  # Larger y-axis tick labels
+    strip.text = element_text(size = 16),  # Larger facet titles
+    legend.position = "bottom",  # Place legend at the bottom
+    legend.title = element_text(size = 14),  # Larger legend title
+    legend.text = element_text(size = 12),  # Larger legend text
+    panel.grid.major = element_blank(),  # Remove major gridlines
+    panel.grid.minor = element_blank(),  # Remove minor gridlines
+    panel.border = element_rect(color = "black", fill = NA, size = 0.5),  # Add a border around panels
+    plot.title = element_text(hjust = 0.5, size = 18, face = "bold")  # Center and make title bold
+  ) +
+  scale_color_brewer(palette = "Set1")  # Use a clear, professional color palette
+
+
+
+
+
+
+install.packages("MetBrewer")
+
+# Load required libraries
+library(ggplot2)
+library(viridis)  # High-contrast, perceptually uniform colors
+library(MetBrewer)  # Scientific color palettes for publication
+
+# Define a bright color palette for high visibility
+bright_colors <- MetBrewer::met.brewer("Hokusai1", n = length(unique(tidy_data$Location)), type = "discrete")
+
+# Enhanced Line Plot for Water Quality Trends
+ggplot(tidy_data, aes(x = Month, y = Value, color = Location, group = Location)) +
+  geom_line(linewidth = 1.5, alpha = 0.9) +  # Thicker lines with slight transparency
+  geom_point(size = 3, shape = 21, fill = "white", stroke = 1.2) +  # Distinct markers with white fill
+  facet_wrap(~ Parameter, scales = "free_y") +
+  scale_color_manual(values = bright_colors) +  # Brighter and clearer colors
+  theme_minimal(base_size = 16) +  # Larger font for better readability
+  labs(
+    title = "Temporal Trends in Water Quality Across Locations",
+    subtitle = "Analysis based on monthly water quality data",
+    x = "Month",
+    y = "Measured Value",
+    color = "Sampling Location"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    strip.text = element_text(size = 16, face = "bold"),  # Bold facet labels for clarity
+    legend.position = "bottom",
+    legend.text = element_text(size = 14),
+    panel.grid.major = element_line(color = "gray75", linetype = "dashed")  # Soft dashed gridlines
+  )
+
+
+
+
+
+# Load required libraries
+library(ggplot2)
+library(RColorBrewer)  # Professional color palettes
+
+# Define a professional color palette
+bright_colors <- brewer.pal(n = length(unique(tidy_data$Location)), "Set1")
+
+# Enhanced Line Plot for Water Quality Trends
+ggplot(tidy_data, aes(x = Month, y = Value, color = Location, group = Location)) +
+  geom_line(linewidth = 1.5, alpha = 0.9) +  # Thicker lines with slight transparency
+  geom_point(size = 3, shape = 21, fill = "white", stroke = 1.2) +  # Distinct markers with white fill
+  facet_wrap(~ Parameter, scales = "free_y") +
+  scale_color_manual(values = bright_colors) +  # Professional color palette
+  theme_minimal(base_size = 16) +  # Larger font for better readability
+  labs(
+    title = "Temporal Trends in Water Quality Across Locations",
+    subtitle = "Analysis based on monthly water quality data",
+    x = "Month",
+    y = "Measured Value",
+    color = "Sampling Location"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 14),
+    axis.text.y = element_text(size = 14),
+    strip.text = element_text(size = 16, face = "bold"),  # Bold facet labels for clarity
+    legend.position = "bottom",
+    legend.text = element_text(size = 14),
+    panel.grid.major = element_line(color = "gray75", linetype = "dashed")  # Soft dashed gridlines
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+
+ggplot(tidy_data, aes(x = Month, y = Value, color = Location)) +
+  geom_line(linewidth = 1.2) +  # Updated to 'linewidth' for line thickness
+  facet_wrap(~ Parameter, scales = "free_y") +
+  theme_minimal(base_size = 15) +  # Larger base font size for readability
+  labs(
+    title = "Water Quality Trends",
+    y = "Frequency",  # Set y-axis label to "Frequency" or another relevant name
+    x = NULL  # No need for x-axis label
+  ) +
+  theme(
+    axis.text.x = element_blank(),  # Remove x-axis labels
+    axis.title.x = element_blank(),  # Remove x-axis title
+    axis.title.y = element_text(size = 16),  # Larger y-axis title
+    axis.text.y = element_text(size = 14),  # Larger y-axis tick labels
+    strip.text = element_text(size = 16),  # Larger facet titles
+    legend.position = "bottom",  # Place legend at the bottom
+    legend.title = element_text(size = 14),  # Larger legend title
+    legend.text = element_text(size = 12),  # Larger legend text
+    panel.grid.major = element_blank(),  # Remove major gridlines
+    panel.grid.minor = element_blank(),  # Remove minor gridlines
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),  # Updated 'linewidth' for border
+    plot.title = element_text(hjust = 0.5, size = 18, face = "bold")  # Center and make title bold
+  ) +
+  scale_color_brewer(palette = "Set1")  # Use a clear, professional color palette
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(viridis)  # Professional, perceptually uniform color palettes
+
+# Filter and plot pH levels over time at Mirpur Bridge
+tidy_data %>%
+  filter(Parameter == "pH", Location == "Mirpur Bridge") %>%
+  ggplot(aes(x = Year, y = Value, colour = Month)) +
+  geom_line(size = 1) +  # Increase line size for better visibility
+  geom_point(size = 2, shape = 21, fill = "white") +  # Add points with contrasting fill
+  scale_colour_viridis_d(option = "C") +  # Use viridis palette for discrete data
+  theme_minimal(base_size = 14) +  # Increase base font size for clarity
+  labs(
+    title = "pH Levels Across Different Locations Over Time at Mirpur Bridge",  # Improved title
+    subtitle = "Monthly Variation from 2010 to 2023",  # Manually defined subtitle
+    x = "Year",
+    y = "pH",
+    colour = "Month"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16),  # Bold and larger title
+    plot.subtitle = element_text(size = 12, face = "italic"),  # Italicised subtitle
+    legend.position = "bottom",  # Legend at the bottom
+    legend.title = element_text(face = "bold")
+  )
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(viridis)  # For colorblind-friendly, publication-ready palettes
+
+# Filter and plot pH levels over time at Mirpur Bridge
+tidy_data %>%
+  filter(Parameter == "EC", Location == "Kamrangir Char") %>%
+  ggplot(aes(x = Year, y = Value, colour = Month)) +
+  geom_line(size = 1, na.rm = TRUE) +  # Use na.rm to handle missing values without warnings
+  geom_point(size = 2, shape = 21, fill = "white", na.rm = TRUE) +  # Add points for emphasis
+  scale_colour_viridis_d(option = "D") +  # Use "D" for a vivid, high-contrast palette
+  theme_classic(base_size = 14) +  # Use a classic theme suitable for publications
+  labs(
+    title = "EC Levels Over Time at Kamrangir Char",
+    subtitle = "Monthly Variation from 2010 to 2023",
+    x = "Year",
+    y = "EC",
+    colour = "Month"
+  ) +
+  theme(
+    plot.title = element_text(face = "bold", size = 18, margin = margin(b = 10)),  # Bold, larger title
+    plot.subtitle = element_text(size = 12, face = "italic", margin = margin(b = 15)),  # Italic subtitle with spacing
+    axis.text = element_text(colour = "black"),  # Black axis text for clarity
+    axis.title = element_text(face = "bold"),  # Bold axis titles
+    legend.position = "bottom",  # Place legend at the bottom
+    legend.title = element_text(face = "bold"),
+    legend.key = element_rect(fill = "transparent", colour = NA)  # Transparent legend background
+  )
+
+
+
+
+#Table 1
+# Load necessary libraries
+# Load necessary libraries
+install.packages("gtsummary")
+library(dplyr)
+library(gtsummary)
+
+# Read the dataset
+tidy_data <- read.csv("tidy_dataset_L1_to_L3.csv")
+
+# Prepare the dataset: convert Month to factor for better grouping if needed
+tidy_data <- tidy_data %>%
+  mutate(Month = factor(Month, levels = month.name))
+
+# Create a descriptive statistics table
+desc_table <- tidy_data %>%
+  group_by(Parameter) %>%
+  tbl_summary(
+    by = Parameter, # Group by 'Parameter'
+    statistic = list(all_continuous() ~ "{mean} ± {sd}"),
+    digits = all_continuous() ~ 2,
+    label = Value ~ "Descriptive Statistics"
+  ) %>%
+  add_p() %>% # Optionally add p-values if needed
+  modify_header(label ~ "**Variable**") %>%
+  modify_caption("**Table 1: Descriptive Statistics for Parameters**") %>%
+  as_gt() %>% # Convert to gt table for APA-style formatting
+  gt::tab_options(
+    table.font.size = "small",
+    table.align = "center"
+  )
+
+# Save table as HTML (APA-style ready for export)
+gt::gtsave(desc_table, "APA_Table1_Descriptives.html")
+
+
+# Load necessary libraries
+library(dplyr)
+library(gtsummary)
+
+# Prepare the dataset: convert Month to factor
+tidy_data <- tidy_data %>%
+  mutate(Month = factor(Month, levels = month.name))
+
+# Create a descriptive statistics table
+desc_table <- tidy_data %>%
+  tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ± {sd}"),
+    digits = all_continuous() ~ 2,
+    label = list(Value ~ "Descriptive Statistics", Location ~ "Location"),
+    missing_text = "N/A" # Replace NA with a clearer label
+  ) %>%
+  modify_header(label ~ "**Variable**") %>% # Adjust header
+  modify_caption("**Table 1: Descriptive Statistics for Parameters**") %>% # Add caption
+  as_gt() %>% # Convert to gt table for APA-style formatting
+  gt::tab_options(
+    table.font.size = "medium", # Adjust font size
+    table.align = "center",
+    heading.align = "center"
+  )
+
+# Save table as HTML (APA-style ready for export)
+gt::gtsave(desc_table, "APA_Table1_Descriptives_Custom.html")
+
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(gtsummary)
+
+# Prepare the dataset: convert Month to factor
+tidy_data <- tidy_data %>%
+  mutate(Month = factor(Month, levels = month.name))
+
+# Create a detailed descriptive statistics table grouped by Location and Parameter
+desc_table <- tidy_data %>%
+  tbl_summary(
+    by = Parameter, # Group by Parameter
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    label = list(
+      Value ~ "Descriptive Statistics",
+      Location ~ "Location",
+      Month ~ "Month",
+      Year ~ "Year"
+    ),
+    missing_text = "N/A" # Replace NA with clearer text
+  ) %>%
+  add_overall() %>% # Add overall statistics
+  add_p(pvalue_fun = ~style_pvalue(.x, digits = 3)) %>% # Add p-values
+  modify_header(label ~ "**Variable**") %>% # Adjust header
+  modify_caption("**Table 1: Descriptive Statistics for Parameters**") %>% # Add caption
+  as_gt() %>% # Convert to gt table for APA-style formatting
+  gt::tab_options(
+    table.font.size = "small", # Adjust font size
+    table.align = "center",
+    heading.align = "center"
+  )
+
+# Save table as HTML (APA-style ready for export)
+gt::gtsave(desc_table, "APA_Table1_Detailed_Descriptives.html")
+
+
+
+
+
+
+
+####Word format table####
+library(gt)
+
+# Prepare the dataset: convert Month to factor
+tidy_data <- tidy_data %>%
+  mutate(Month = factor(Month, levels = month.name))
+
+# Create a detailed descriptive statistics table grouped by Location and Parameter
+desc_table <- tidy_data %>%
+  tbl_summary(
+    by = Parameter, # Group by Parameter
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    label = list(
+      Value ~ "Descriptive Statistics",
+      Location ~ "Location",
+      Month ~ "Month",
+      Year ~ "Year"
+    ),
+    missing_text = "N/A" # Replace NA with clearer text
+  ) %>%
+  add_overall() %>% # Add overall statistics
+  add_p(pvalue_fun = ~style_pvalue(.x, digits = 3)) %>% # Add p-values
+  modify_header(label ~ "**Variable**") %>% # Adjust header
+  modify_caption("**Table 1: Descriptive Statistics for Parameters**") %>% # Add caption
+  as_gt() %>% # Convert to gt table for APA-style formatting
+  gt::tab_options(
+    table.font.size = "small", # Adjust font size
+    table.align = "center",
+    heading.align = "center"
+  )
+
+
+
+
+# Save table as a Word document (APA-style ready for export)
+gtsave(desc_table, "APA_Table1_Detailed_Descriptives.docx")
+
+
+
+
+
+
+
+
+
+
+
+####table 2
+# Load necessary libraries
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+# Example: Categorize data (modify as per your dataset and categorization logic)
+# Replace 'Parameter' and 'Value' with the actual column names in your dataset
+categorization_table <- tidy_data %>%
+  mutate(
+    Category = case_when(
+      Parameter == "EC" & Value < 250 ~ "Excellent",
+      Parameter == "EC" & Value >= 250 & Value < 750 ~ "Good",
+      Parameter == "EC" & Value >= 750 & Value < 2000 ~ "Medium",
+      Parameter == "EC" & Value >= 2000 ~ "Poor",
+      Parameter == "pH" & Value < 6.5 ~ "Acidic",
+      Parameter == "pH" & Value >= 6.5 & Value <= 8.5 ~ "Neutral",
+      Parameter == "pH" & Value > 8.5 ~ "Alkaline",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(Parameter, Category) %>%
+  summarise(
+    Range = paste0(min(Value), "–", max(Value)),
+    Distribution = n(),
+    Percent = round((n() / nrow(tidy_data)) * 100, 2)
+  ) %>%
+  ungroup()
+
+# Create the table
+classification_table <- categorization_table %>%
+  select(Parameter, Range, Category, Percent) %>%
+  arrange(Parameter) %>%
+  kbl(caption = "Table 1: Classification of Parameters and Their Distribution") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "3cm") %>%
+  column_spec(2:4, width = "2.5cm")
+
+# Save table as an HTML file (optional)
+save_kable(classification_table, "Classification_Table.html")
+
+
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+# Ensure your dataset includes a 'Location' column and adjust as necessary
+# Example: Categorize data (modify as per your dataset and categorization logic)
+# Replace 'Parameter' and 'Value' with the actual column names in your dataset
+categorization_table <- tidy_data %>%
+  mutate(
+    Category = case_when(
+      Parameter == "EC" & Value < 250 ~ "Excellent",
+      Parameter == "EC" & Value >= 250 & Value < 750 ~ "Good",
+      Parameter == "EC" & Value >= 750 & Value < 2000 ~ "Medium",
+      Parameter == "EC" & Value >= 2000 ~ "Poor",
+      Parameter == "pH" & Value < 6.5 ~ "Acidic",
+      Parameter == "pH" & Value >= 6.5 & Value <= 8.5 ~ "Neutral",
+      Parameter == "pH" & Value > 8.5 ~ "Alkaline",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(Location, Parameter, Category) %>%
+  summarise(
+    Range = paste0(min(Value), "–", max(Value)),
+    Distribution = n(),
+    Percent = round((n() / sum(n())) * 100, 2),
+    .groups = 'drop'  # Drop grouping to prevent regrouping in subsequent operations
+  )
+
+# Create the table
+classification_table <- categorization_table %>%
+  select(Location, Parameter, Category, Range, Distribution, Percent) %>%
+  arrange(Location, Parameter, Category) %>%
+  kbl(caption = "Table 1: Classification of Parameters by Location") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "3cm") %>%
+  column_spec(2:6, width = "2.5cm")
+
+# Display the table in RStudio's Viewer
+print(classification_table)
+
+# Save table as an HTML file (optional)
+save_kable(classification_table, "Classification_Table_By_Location.html")
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(officer)
+library(flextable)
+
+# Example: Categorize data (modify as per your dataset and categorization logic)
+# Assuming tidy_data includes 'Location', 'Parameter', and 'Value'
+categorization_table <- tidy_data %>%
+  mutate(
+    Category = case_when(
+      Parameter == "EC" & Value < 250 ~ "Excellent",
+      Parameter == "EC" & Value >= 250 & Value < 750 ~ "Good",
+      Parameter == "EC" & Value >= 750 & Value < 2000 ~ "Medium",
+      Parameter == "EC" & Value >= 2000 ~ "Poor",
+      Parameter == "pH" & Value < 6.5 ~ "Acidic",
+      Parameter == "pH" & Value >= 6.5 & Value <= 8.5 ~ "Neutral",
+      Parameter == "pH" & Value > 8.5 ~ "Alkaline",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(Location, Parameter, Category) %>%
+  summarise(
+    Range = paste0(min(Value), "–", max(Value)),
+    Distribution = n(),
+    Percent = round((n() / sum(n())) * 100, 2),
+    .groups = 'drop'  # Drop grouping to prevent regrouping in subsequent operations
+  ) %>%
+  ungroup() %>%
+  arrange(Location, Parameter, Category)
+
+# Convert to flextable
+ft <- flextable(categorization_table)
+
+# Create Word document
+doc <- read_docx()
+doc <- body_add_flextable(doc, value = ft)
+
+# Save Word document
+print(doc, target = "Classification_Table_By_Location.docx")
+
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(officer)
+library(flextable)
+
+# Assuming tidy_data includes 'Location', 'Parameter', and 'Value'
+# Expand the categorization logic
+categorization_table <- tidy_data %>%
+  mutate(
+    Category = case_when(
+      Parameter == "TDS" & Value < 300 ~ "Excellent",
+      Parameter == "TDS" & Value >= 300 & Value < 600 ~ "Good",
+      Parameter == "TDS" & Value >= 600 & Value < 900 ~ "Fair",
+      Parameter == "TDS" & Value >= 900 & Value < 1200 ~ "Poor",
+      Parameter == "TDS" & Value >= 1200 ~ "Unacceptable",
+      
+      Parameter == "EC" & Value < 250 ~ "Excellent",
+      Parameter == "EC" & Value >= 250 & Value < 750 ~ "Good",
+      Parameter == "EC" & Value >= 750 & Value < 2000 ~ "Fair",
+      Parameter == "EC" & Value >= 2000 & Value < 3000 ~ "Poor",
+      Parameter == "EC" & Value >= 3000 ~ "Unacceptable",
+      
+      Parameter == "Turbidity" & Value < 1 ~ "Excellent",
+      Parameter == "Turbidity" & Value >= 1 & Value < 5 ~ "Good",
+      Parameter == "Turbidity" & Value >= 5 & Value < 10 ~ "Fair",
+      Parameter == "Turbidity" & Value >= 10 & Value < 20 ~ "Poor",
+      Parameter == "Turbidity" & Value >= 20 ~ "Unacceptable",
+      
+      Parameter == "pH" & Value >= 6.5 & Value <= 7.5 ~ "Excellent",
+      Parameter == "pH" & Value >= 6.0 & Value < 6.5 | Value > 7.5 & Value <= 8.5 ~ "Good",
+      Parameter == "pH" & (Value >= 5.5 & Value < 6.0 | Value > 8.5 & Value <= 9.0) ~ "Fair",
+      Parameter == "pH" & (Value >= 5.0 & Value < 5.5 | Value > 9.0 & Value <= 9.5) ~ "Poor",
+      Parameter == "pH" & (Value < 5.0 | Value > 9.5) ~ "Unacceptable",
+      
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(Location, Parameter, Category) %>%
+  summarise(
+    Range = paste0(min(Value), "–", max(Value)),
+    Distribution = n(),
+    Percent = round((n() / sum(n())) * 100, 2),
+    .groups = 'drop'  # Drop grouping to prevent regrouping in subsequent operations
+  ) %>%
+  ungroup() %>%
+  arrange(Location, Parameter, Category)
+
+# Convert to flextable
+ft <- flextable(categorization_table)
+
+# Create Word document
+doc <- read_docx()
+doc <- body_add_flextable(doc, value = ft)
+
+# Save Word document
+print(doc, target = "Classification_Table_By_Location.docx")
+
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(officer)
+library(flextable)
+
+# Sample data setup (replace with your actual tidy_data)
+# Assuming tidy_data includes 'Location', 'Parameter', and 'Value'
+
+# Define standards for comparison (modify these values according to your actual standards)
+standards <- data.frame(
+  Parameter = c("TDS", "EC", "Turbidity", "pH", "BOD", "COD", "Chloride", "DO", "SS", "Total Alkalinity"),
+  Excellent = c(300, 250, 1, 7.5, 1, 20, 150, 6, 10, 120),
+  Good = c(600, 750, 5, 8.5, 2, 50, 250, 6, 20, 150),
+  Fair = c(900, 2000, 10, 9.0, 5, 100, 500, 5, 50, 200),
+  Poor = c(1200, 3000, 20, 9.5, 8, 200, 1000, 3, 100, 250),
+  Unacceptable = c(1201, 3001, 21, 9.6, 9, 201, 1001, 2, 101, 251)
+)
+
+# Calculate average values for each parameter at each location
+average_values <- tidy_data %>%
+  group_by(Location, Parameter) %>%
+  summarise(Average = mean(Value, na.rm = TRUE), .groups = 'drop')
+
+# Function to determine category based on value and parameter
+get_category <- function(param, value) {
+  row <- standards[standards$Parameter == param,]
+  if (value < row$Excellent) return("Excellent")
+  else if (value >= row$Excellent & value < row$Good) return("Good")
+  else if (value >= row$Good & value < row$Fair) return("Fair")
+  else if (value >= row$Fair & value < row$Poor) return("Poor")
+  else if (value >= row$Poor & value < row$Unacceptable) return("Poor")
+  else return("Unacceptable")
+}
+
+# Apply the category function
+average_values$Category <- mapply(get_category, average_values$Parameter, average_values$Average)
+
+
+# Function to determine category based on value and parameter
+get_category <- function(param, value) {
+  row <- standards[standards$Parameter == param, ]
+  
+  # Check if row is empty and handle error
+  if (nrow(row) == 0) {
+    warning(paste("No standards found for parameter:", param))
+    return("No Standard")
+  }
+  
+  if (value < row$Excellent) return("Excellent")
+  else if (value >= row$Excellent & value < row$Good) return("Good")
+  else if (value >= row$Good & value < row$Fair) return("Fair")
+  else if (value >= row$Fair & value < row$Poor) return("Poor")
+  else if (value >= row$Poor & value < row$Unacceptable) return("Unacceptable")
+  else return("No Category Match")
+}
+
+# Apply the category function
+average_values$Category <- mapply(get_category, average_values$Parameter, average_values$Average)
+
+# Continue with your existing code to create and save the Word document...
+
+
+
+# Convert data to a flextable object
+ft <- flextable(average_values) %>%
+  set_header_labels(Location = "Location", Parameter = "Parameter", Average = "Average Value", Category = "Category") %>%
+  theme_vanilla() %>%
+  autofit()
+
+# Create a new Word document and add the flextable
+doc <- read_docx()
+doc <- body_add_flextable(doc, value = ft)
+
+# Save the Word document
+print(doc, target = "Average_Values_Comparison.docx")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Function to determine category based on value and parameter
+get_category <- function(param, value) {
+  # Use filter to get the corresponding row for the parameter
+  row <- standards %>% filter(Parameter == param)
+  
+  # Check if row is empty (i.e., no matching parameter was found)
+  if(nrow(row) == 0) {
+    warning(paste("No matching standards found for parameter:", param))
+    return("No Standard Found")
+  }
+  
+  # Perform comparisons to assign category
+  if(value < row$Excellent) {
+    "Excellent"
+  } else if(value >= row$Excellent && value < row$Good) {
+    "Good"
+  } else if(value >= row$Good && value < row$Fair) {
+    "Fair"
+  } else if(value >= row$Fair && value < row$Poor) {
+    "Poor"
+  } else if(value >= row$Poor && value < row$Unacceptable) {
+    "Poor"
+  } else {
+    "Unacceptable"
+  }
+}
+
+# Ensure average_values is correctly computed before applying the category function
+if(nrow(average_values) > 0) {
+  # Apply the category function
+  average_values <- average_values %>%
+    rowwise() %>%
+    mutate(Category = get_category(Parameter, Average))
+}
+
+# If average_values has data, proceed to create the flextable
+if(nrow(average_values) > 0) {
+  # Convert data to a flextable object
+  ft <- flextable(average_values) %>%
+    set_header_labels(Location = "Location", Parameter = "Parameter", Average = "Average Value", Category = "Category") %>%
+    theme_vanilla() %>%
+    autofit()
+  
+  # Create a new Word document and add the flextable
+  doc <- read_docx()
+  doc <- body_add_flextable(doc, value = ft)
+  
+  # Save the Word document
+  print(doc, target = "Average_Values_Comparison.docx")
+} else {
+  print("No data to display.")
+}
+
+
+
+
+
+
+
+
+# Load necessary libraries
+library(officer)
+library(flextable)
+
+# Create a data frame with parameter information
+parameters_info <- data.frame(
+  Parameter = c("Total Dissolved Solids (TDS)", "Electrical Conductivity (EC)", "Turbidity", "pH Level", 
+                "Biochemical Oxygen Demand (BOD)", "Chemical Oxygen Demand (COD)", "Chloride", 
+                "Dissolved Oxygen (DO)", "Suspended Solids (SS)", "Total Alkalinity"),
+  Excellent = c("<300 mg/L", "<250 µS/cm", "<1 NTU", "6.5-7.5", "<1 mg/L", "<20 mg/L", 
+                "<150 mg/L", ">6 mg/L", "<10 mg/L", "80-120 mg/L as CaCO3"),
+  Good = c("300-600 mg/L", "250-750 µS/cm", "1-5 NTU", "6.0-8.5", "1-2 mg/L", "20-50 mg/L", 
+           "150-250 mg/L", "5-6 mg/L", "10-20 mg/L", "50-80 or 120-150 mg/L as CaCO3"),
+  Fair = c("600-900 mg/L", "750-2000 µS/cm", "5-10 NTU", "5.5-6.0 or 8.5-9.0", "2-5 mg/L", 
+           "50-100 mg/L", "250-500 mg/L", "3-5 mg/L", "20-50 mg/L", "20-50 or 150-200 mg/L as CaCO3"),
+  Poor = c("900-1200 mg/L", "2000-3000 µS/cm", "10-20 NTU", "5.0-5.5 or 9.0-9.5", "5-8 mg/L", 
+           "100-200 mg/L", "500-1000 mg/L", "2-3 mg/L", "50-100 mg/L", "<20 or 200-250 mg/L as CaCO3"),
+  Unacceptable = c(">1200 mg/L", ">3000 µS/cm", ">20 NTU", "<5.0 or >9.5", ">8 mg/L", ">200 mg/L", 
+                   ">1000 mg/L", "<2 mg/L", ">100 mg/L", ">250 mg/L as CaCO3"),
+  References = c("WHO", "FAO", "EPA", "EPA", "Varies by local regulations", "Varies by application", 
+                 "WHO", "EPA", "Local standards may vary", "Local environmental regulations")
+)
+
+# Convert the data frame to a flextable object
+apa_table <- flextable(parameters_info)
+apa_table <- set_header_labels(apa_table, Parameter = "Parameter", Excellent = "Excellent",
+                               Good = "Good", Fair = "Fair", Poor = "Poor",
+                               Unacceptable = "Unacceptable", References = "Reference")
+apa_table <- theme_vanilla(apa_table)
+apa_table <- autofit(apa_table)
+
+# Create a new Word document and add the flextable
+doc <- read_docx()
+doc <- body_add_flextable(doc, value = apa_table)
+
+# Save the Word document
+print(doc, target = "Water_Quality_Parameters.docx")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+
+# Example: Categorize and pivot data to change layout
+# Assuming tidy_data includes 'Location', 'Parameter', and 'Value'
+categorization_table <- tidy_data %>%
+  mutate(
+    Category = case_when(
+      Parameter == "EC" & Value < 250 ~ "Excellent",
+      Parameter == "EC" & Value >= 250 & Value < 750 ~ "Good",
+      Parameter == "EC" & Value >= 750 & Value < 2000 ~ "Medium",
+      Parameter == "EC" & Value >= 2000 ~ "Poor",
+      Parameter == "pH" & Value < 6.5 ~ "Acidic",
+      Parameter == "pH" & Value >= 6.5 & Value <= 8.5 ~ "Neutral",
+      Parameter == "pH" & Value > 8.5 ~ "Alkaline",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(Location, Parameter, Category) %>%
+  summarise(
+    Range = paste0(min(Value), "–", max(Value)),
+    Distribution = n(),
+    Percent = round((n() / sum(n())) * 100, 2),
+    .groups = 'drop'
+  )
+
+# Pivot data to have Parameters on the Y-axis and Location + Category in the headers
+wide_table <- categorization_table %>%
+  pivot_wider(
+    names_from = c(Location, Category),
+    values_from = c(Range, Distribution, Percent),
+    names_sep = " - "  # Customize separator for clarity
+  )
+
+# Create and format the table for display
+formatted_table <- wide_table %>%
+  kbl(caption = "Table 2: Wide Classification of Parameters by Location and Category") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+# Display the table in RStudio's Viewer
+print(formatted_table)
+
+# Save table as an HTML file (optional)
+save_kable(formatted_table, "Wide_Classification_Table.html")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Add units for each parameter
+tidy_data <- tidy_data %>%
+  mutate(
+    Unit = case_when(
+      Parameter == "BOD" ~ "mg/L",
+      Parameter == "COD" ~ "mg/L",
+      Parameter == "Chloride" ~ "mg/L",
+      Parameter == "DO" ~ "mg/L",
+      Parameter == "EC" ~ "µS/cm",
+      Parameter == "SS" ~ "mg/L",
+      Parameter == "T-Alkalinity" ~ "mg/L",
+      Parameter == "TDS" ~ "mg/L",
+      Parameter == "Turbidity" ~ "NTU",
+      Parameter == "pH" ~ "",
+      TRUE ~ "Other"
+    )
+  )
+
+# Categorize data based on provided ranges and categories
+custom_table <- tidy_data %>%
+  mutate(
+    Category = case_when(
+      Parameter == "BOD" ~ "Other",
+      Parameter == "COD" ~ "Other",
+      Parameter == "Chloride" ~ "Other",
+      Parameter == "DO" ~ "Other",
+      Parameter == "EC" & Value < 250 ~ "Excellent",
+      Parameter == "EC" & Value >= 250 & Value < 750 ~ "Good",
+      Parameter == "EC" & Value >= 750 ~ "Medium",
+      Parameter == "SS" ~ "Other",
+      Parameter == "T-Alkalinity" ~ "Other",
+      Parameter == "TDS" ~ "Other",
+      Parameter == "Turbidity" ~ "Other",
+      Parameter == "pH" & Value < 6.5 ~ "Acidic",
+      Parameter == "pH" & Value >= 6.5 & Value <= 8.5 ~ "Neutral",
+      Parameter == "pH" & Value > 8.5 ~ "Alkaline",
+      TRUE ~ "Other"
+    )
+  ) %>%
+  group_by(Parameter, Unit, Category) %>%
+  summarise(
+    Range = paste0(min(Value), "–", max(Value), " ", unique(Unit)),
+    Percent = round((n() / nrow(tidy_data)) * 100, 2)
+  ) %>%
+  ungroup()
+
+# Print custom table
+custom_table
+
+
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(gt)
+library(officer)
+library(flextable)
+
+# Sample dataset
+data <- tibble(
+  Parameter = c(
+    "BOD", "COD", "Chloride", "DO", "EC", "EC", "EC", 
+    "SS", "T-Alkalinity", "TDS", "Turbidity", 
+    "pH", "pH", "pH"
+  ),
+  Range = c(
+    "0–132 mg/L", "0–283 mg/L", "1–444 mg/L", "0–29.7 mg/L", 
+    "5–244 µS/cm", "250–746 µS/cm", "750–1587 µS/cm", 
+    "1–168 mg/L", "2–738 mg/L", "9–1188 mg/L", 
+    "1.2–512 NTU", 
+    "5.36–6.41", "29.7–29.7", "6.5–8.31"
+  ),
+  Category = c(
+    "Other", "Other", "Other", "Other", 
+    "Excellent", "Good", "Medium", 
+    "Other", "Other", "Other", "Other", 
+    "Acidic", "Alkaline", "Neutral"
+  ),
+  Percent = c(
+    10.00, 10.00, 10.00, 10.00, 
+    4.09, 3.81, 2.10, 
+    10.00, 10.00, 10.00, 10.00, 
+    0.24, 0.26, 9.50
+  )
+)
+
+# Create a flextable
+ft <- flextable(data) %>%
+  set_caption(caption = "Table 2: Classification of Parameters and Their Distribution") %>%
+  autofit() %>%
+  align(j = c("Parameter", "Range", "Category", "Percent"), align = "center", part = "all") %>%
+  bold(part = "header") %>%
+  fontsize(size = 10, part = "all") %>%
+  color(part = "header", color = "black") %>%
+  bg(part = "header", bg = "lightgray")
+
+# Export to Word document
+doc <- read_docx() %>%
+  body_add_flextable(ft) %>%
+  print(target = "Parameter_Classification_Table.docx")
+
+# Confirmation message
+cat("Table saved as 'Parameter_Classification_Table.docx'")
+
+
+
+
+
+
+####table 3####
+#Correlation Analysis
+#Check for Duplicate Parameter Entries
+tidy_summary <- tidy_data %>%
+  group_by(Location, Year, Parameter) %>%
+  summarise(Average_Value = mean(Value, na.rm = TRUE), .groups = "drop")
+
+print(tidy_summary)
+
+
+
+library(flextable)
+summary_table <- flextable(tidy_summary) %>%
+  set_caption("Table 3: Average Values of Water Quality Parameters by Location and Year") %>%
+  autofit()
+
+read_docx() %>%
+  body_add_flextable(summary_table) %>%
+  print(target = "Water_Quality_Summary.docx")
+
+
+####Visualization of Trends####
+
+
+
+
+library(ggplot2)
+ggplot(tidy_summary, aes(x = Year, y = Average_Value, color = Location)) +
+  geom_line() +
+  facet_wrap(~Parameter, scales = "free_y") +
+  labs(
+    title = "Trends of Water Quality Parameters Over Years",
+    x = "Year",
+    y = "Average Value"
+  ) +
+  theme_minimal()
+
+
+
+
+#more professional
+# Ensure all years are included for all parameters and locations
+tidy_summary <- tidy_summary %>%
+  complete(
+    Year = seq(2010, 2023),  # Full year range
+    Parameter,               # All parameters
+    Location,                # All locations
+    fill = list(Average_Value = NA)  # Fill missing values with NA
+  )
+
+# Re-plot with the updated dataset
+ggplot(tidy_summary, aes(x = Year, y = Average_Value, color = Location, group = Location)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  facet_wrap(~Parameter, scales = "free_y", ncol = 3) +
+  scale_color_brewer(palette = "Set1") +
+  scale_x_continuous(
+    breaks = seq(2010, 2023, by = 2),  # Show all years at intervals of 2
+    limits = c(2010, 2023)
+  ) +
+  labs(
+    title = "Temporal Trends in Water Quality Parameters",
+    subtitle = "Analyzed Across Multiple Locations (2010-2023)",
+    x = "Year",
+    y = "Average Value",
+    color = "Location"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.position = "bottom",
+    legend.title = element_text(face = "bold"),
+    strip.text = element_text(face = "bold", size = 11)
+  )
+
+
+
+
+
+# Load required libraries
+library(ggplot2)
+library(RColorBrewer)
+
+# Ensure all years are included for all parameters and locations
+tidy_summary <- tidy_summary %>%
+  complete(
+    Year = seq(2010, 2023),  # Full year range
+    Parameter,               # All parameters
+    Location,                # All locations
+    fill = list(Average_Value = NA)  # Fill missing values with NA
+  )
+
+# Re-plot with the updated dataset
+ggplot(tidy_summary, aes(x = Year, y = Average_Value, color = Location, group = Location)) +
+  geom_line(size = 1.2) +  # Thicker line for clarity
+  geom_point(size = 3, shape = 16) +  # Larger points for better visibility
+  facet_wrap(~ Parameter, scales = "free_y", ncol = 3) +
+  scale_color_brewer(palette = "Set1") +  # Professional color palette (Set1)
+  scale_x_continuous(
+    breaks = seq(2010, 2023, by = 2),  # Show all years at intervals of 2
+    limits = c(2010, 2023)
+  ) +
+  labs(
+    title = "Temporal Trends in Water Quality Parameters",
+    subtitle = "Analyzed Across Multiple Locations (2010-2023)",
+    x = "Year",
+    y = "Average Value",
+    color = "Location"
+  ) +
+  theme_minimal(base_size = 14) +  # Increased base font size for clarity
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 16),  # Centered, bold title
+    plot.subtitle = element_text(hjust = 0.5, size = 12),  # Centered subtitle
+    axis.title = element_text(face = "bold", size = 14),  # Bold axis titles
+    axis.text = element_text(size = 12),  # Larger axis text for readability
+    legend.position = "bottom",  # Positioned at the bottom
+    legend.title = element_text(face = "bold", size = 12),  # Bold legend title
+    legend.text = element_text(size = 12),  # Larger legend text
+    strip.text = element_text(face = "bold", size = 14),  # Bold facet labels
+    panel.grid.major = element_line(color = "gray90", linetype = "solid"),  # Soft gray gridlines
+    panel.grid.minor = element_blank()  # Remove minor gridlines
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Identify Critical Parameters
+critical_parameters <- tidy_summary %>%
+  filter(
+    (Parameter == "BOD" & Average_Value > 10) |
+      (Parameter == "DO" & Average_Value < 3)
+  )
+
+print(critical_parameters)
+
+
+
+
+
+
+
+# Group data by Category and summarize key statistics
+summary_table <- data %>%
+  group_by(Category) %>%
+  summarise(
+    Mean = mean(Percent, na.rm = TRUE),
+    Median = median(Percent, na.rm = TRUE),
+    SD = sd(Percent, na.rm = TRUE)
+  )
+
+# Display table
+print(summary_table)
+
+# Export summary table to Word
+ft_summary <- flextable(summary_table) %>%
+  set_caption(caption = "Table 2: Statistical Summary by Category") %>%
+  autofit()
+
+doc_summary <- read_docx() %>%
+  body_add_flextable(ft_summary) %>%
+  print(target = "Statistical_Summary.docx")
+
+
+
+# Group data by Category and summarize key statistics (excluding SD)
+summary_table <- data %>%
+  group_by(Category) %>%
+  summarise(
+    Mean = mean(Percent, na.rm = TRUE),
+    Median = median(Percent, na.rm = TRUE)
+  )
+
+# Display table
+print(summary_table)
+
+# Export summary table to Word
+ft_summary <- flextable(summary_table) %>%
+  set_caption(caption = "Table 2: Statistical Summary by Category") %>%
+  autofit()
+
+doc_summary <- read_docx() %>%
+  body_add_flextable(ft_summary) %>%
+  print(target = "Statistical_Summary.docx")
+
+
+
+
+
+
+
+# Group data by Category and summarize key statistics
+summary_table <- data %>%
+  group_by(Category) %>%
+  summarise(
+    Mean = mean(Percent, na.rm = TRUE),
+    Median = median(Percent, na.rm = TRUE),
+    Min = min(Percent, na.rm = TRUE),
+    Max = max(Percent, na.rm = TRUE),
+    SE = sd(Percent, na.rm = TRUE) / sqrt(n()), # Standard Error
+    Count = n() # Number of observations
+  )
+
+# Display table
+print(summary_table)
+
+# Export summary table to Word
+ft_summary <- flextable(summary_table) %>%
+  set_caption(caption = "Table 2: Statistical Summary by Category") %>%
+  autofit()
+
+doc_summary <- read_docx() %>%
+  body_add_flextable(ft_summary) %>%
+  print(target = "Statistical_Summary.docx")
+
+
+
+
+
+
+
+# Group data by Category and summarize key statistics (excluding SD and SE)
+summary_table <- data %>%
+  group_by(Category) %>%
+  summarise(
+    Mean = mean(Percent, na.rm = TRUE),
+    Median = median(Percent, na.rm = TRUE),
+    Min = min(Percent, na.rm = TRUE),
+    Max = max(Percent, na.rm = TRUE),
+    Count = n() # Number of observations
+  )
+
+# Display table
+print(summary_table)
+
+# Export summary table to Word
+ft_summary <- flextable(summary_table) %>%
+  set_caption(caption = "Table 2: Statistical Summary by Category") %>%
+  autofit()
+
+doc_summary <- read_docx() %>%
+  body_add_flextable(ft_summary) %>%
+  print(target = "Statistical_Summary.docx")
+
+
+
+
+
+
+
+
+unique_parameters <- unique(data$Parameter)
+print(unique_parameters)
+
+
+
+
+
+
+
+
+# Define weights for each Parameter based on analysis
+weights <- c(
+  "BOD" = 0.3,
+  "COD" = 0.25,
+  "Chloride" = 0.1,
+  "DO" = 0.2,
+  "EC" = 0.15,
+  "SS" = 0.1,
+  "T-Alkalinity" = 0.1,
+  "TDS" = 0.2,
+  "Turbidity" = 0.15,
+  "pH" = 0.15
+)
+
+# Check if all Parameters have defined weights
+missing_weights <- setdiff(unique(data$Parameter), names(weights))
+if (length(missing_weights) > 0) {
+  stop(paste("The following parameters are missing weights:", paste(missing_weights, collapse = ", ")))
+}
+
+# Calculate Weighted Score
+data <- data %>%
+  mutate(Weighted_Score = Percent * weights[Parameter])
+
+# Summarize Water Quality Index (WQI)
+wqi <- data %>%
+  group_by(Category) %>%
+  summarise(WQI = sum(Weighted_Score, na.rm = TRUE))
+
+# Export WQI table to Word
+ft_wqi <- flextable(wqi) %>%
+  set_caption(caption = "Table 6: Water Quality Index by Category") %>%
+  autofit()
+
+doc_wqi <- read_docx() %>%
+  body_add_flextable(ft_wqi) %>%
+  print(target = "Water_Quality_Index.docx")
+# Define weights for each Parameter based on analysis
+weights <- c(
+  "BOD" = 0.3,
+  "COD" = 0.25,
+  "Chloride" = 0.1,
+  "DO" = 0.2,
+  "EC" = 0.15,
+  "SS" = 0.1,
+  "T-Alkalinity" = 0.1,
+  "TDS" = 0.2,
+  "Turbidity" = 0.15,
+  "pH" = 0.15
+)
+
+# Check if all Parameters have defined weights
+missing_weights <- setdiff(unique(data$Parameter), names(weights))
+if (length(missing_weights) > 0) {
+  stop(paste("The following parameters are missing weights:", paste(missing_weights, collapse = ", ")))
+}
+
+# Calculate Weighted Score
+data <- data %>%
+  mutate(Weighted_Score = Percent * weights[Parameter])
+
+# Summarize Water Quality Index (WQI)
+wqi <- data %>%
+  group_by(Category) %>%
+  summarise(WQI = sum(Weighted_Score, na.rm = TRUE))
+
+# Export WQI table to Word
+ft_wqi <- flextable(wqi) %>%
+  set_caption(caption = "Table 6: Water Quality Index by Category") %>%
+  autofit()
+
+doc_wqi <- read_docx() %>%
+  body_add_flextable(ft_wqi) %>%
+  print(target = "Water_Quality_Index.docx")
+
+
+
+
+
+
+
+#sensitivity analysis
+# Original weights for each parameter
+original_weights <- c(
+  "BOD" = 0.3,
+  "COD" = 0.25,
+  "Chloride" = 0.1,
+  "DO" = 0.2,
+  "EC" = 0.15,
+  "SS" = 0.1,
+  "T-Alkalinity" = 0.1,
+  "TDS" = 0.2,
+  "Turbidity" = 0.15,
+  "pH" = 0.15
+)
+
+# Adjust weights for sensitivity analysis
+adjusted_weights <- list(
+  "Scenario_1" = original_weights * 1.1,  # Increase all weights by 10%
+  "Scenario_2" = original_weights * 0.9,  # Decrease all weights by 10%
+  "Scenario_3" = c(
+    "BOD" = 0.35, "COD" = 0.2, "Chloride" = 0.1, "DO" = 0.25,
+    "EC" = 0.1, "SS" = 0.1, "T-Alkalinity" = 0.15, "TDS" = 0.15,
+    "Turbidity" = 0.2, "pH" = 0.1
+  )  # Custom adjustment based on hypothetical changes
+)
+
+# Function to calculate WQI
+calculate_wqi <- function(data, weights) {
+  data %>%
+    mutate(Weighted_Score = Percent * weights[Parameter]) %>%
+    group_by(Category) %>%
+    summarise(WQI = sum(Weighted_Score, na.rm = TRUE))
+}
+
+# Iterate through scenarios and calculate WQI for each
+sensitivity_results <- lapply(names(adjusted_weights), function(scenario) {
+  scenario_weights <- adjusted_weights[[scenario]]
+  wqi <- calculate_wqi(data, scenario_weights)
+  wqi$Scenario <- scenario
+  return(wqi)
+})
+
+# Combine all results into one data frame
+sensitivity_results_df <- bind_rows(sensitivity_results)
+
+
+
+
+# Ensure data and weights align correctly
+# Function to calculate WQI with parameter matching
+calculate_wqi <- function(data, weights) {
+  data %>%
+    rowwise() %>%
+    mutate(Weighted_Score = Percent * weights[[Parameter]]) %>%  # Use [[]] for list-like access
+    group_by(Category) %>%
+    summarise(WQI = sum(Weighted_Score, na.rm = TRUE), .groups = "drop")
+}
+
+# Iterate through scenarios and calculate WQI for each
+sensitivity_results <- lapply(names(adjusted_weights), function(scenario) {
+  scenario_weights <- adjusted_weights[[scenario]]
+  wqi <- calculate_wqi(data, scenario_weights)
+  wqi$Scenario <- scenario  # Add scenario name to results
+  return(wqi)
+})
+
+# Combine all results into one data frame
+sensitivity_results_df <- bind_rows(sensitivity_results)
+
+# Display results
+sensitivity_results_df
+
+# Export sensitivity analysis results to Word
+ft_sensitivity <- flextable(sensitivity_results_df) %>%
+  set_caption(caption = "Table: Sensitivity Analysis of WQI under Different Weight Scenarios") %>%
+  autofit()
+
+doc_sensitivity <- read_docx() %>%
+  body_add_flextable(ft_sensitivity) %>%
+  print(target = "Sensitivity_Analysis_WQI.docx")
+
+# Print sensitivity results for quick review
+print(sensitivity_results_df)
+
+
+
+#Visualization#
+# Load required libraries
+library(ggplot2)
+library(dplyr)
+
+# Sample Data
+data <- data.frame(
+  Category = c("Acidic", "Alkaline", "Excellent", "Good", "Medium", "Neutral", "Other"),
+  WQI = c(0.03960, 0.04290, 0.67485, 0.62865, 0.34650, 1.56750, 15.40000,
+          0.03240, 0.03510, 0.55215, 0.51435, 0.28350, 1.28250, 12.60000,
+          0.02400, 0.02600, 0.40900, 0.38100, 0.21000, 0.95000, 15.00000),
+  Scenario = rep(c("Scenario_1", "Scenario_2", "Scenario_3"), each = 7)
+)
+
+# Create comparison plot
+comparison_plot <- ggplot(data, aes(x = Category, y = WQI, fill = Scenario)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Comparison of WQI Across Scenarios",
+    x = "Category",
+    y = "WQI",
+    fill = "Scenario"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "bottom"
+  )
+
+# Display plot
+print(comparison_plot)
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+
+# Sample Data
+data <- data.frame(
+  Category = c("Acidic", "Alkaline", "Excellent", "Good", "Medium", "Neutral", "Other"),
+  WQI = c(0.03960, 0.04290, 0.67485, 0.62865, 0.34650, 1.56750, 15.40000,
+          0.03240, 0.03510, 0.55215, 0.51435, 0.28350, 1.28250, 12.60000,
+          0.02400, 0.02600, 0.40900, 0.38100, 0.21000, 0.95000, 15.00000),
+  Scenario = rep(c("Scenario_1", "Scenario_2", "Scenario_3"), each = 7)
+)
+
+# Create comparison plot
+comparison_plot <- ggplot(data, aes(x = Category, y = WQI, fill = Scenario)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color = "black", width = 0.7) +
+  scale_fill_manual(
+    values = c("Scenario_1" = "#0072B2", "Scenario_2" = "#009E73", "Scenario_3" = "#D55E00"),
+    labels = c("Scenario 1", "Scenario 2", "Scenario 3")
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) Across Scenarios",
+    subtitle = "A comparative analysis of WQI categories under varying parameter weights",
+    x = "Water Quality Category",
+    y = "Water Quality Index (WQI)",
+    fill = "Weighting Scenarios"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10),
+    axis.text.y = element_text(size = 10),
+    axis.title = element_text(size = 12, face = "bold"),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.position = "bottom",
+    panel.grid.major = element_line(color = "gray80"),
+    panel.grid.minor = element_blank()
+  )
+
+
+# Display plot
+print(comparison_plot)
+
+# Save plot as high-resolution image
+ggsave("WQI_Comparison_Lancet.png", plot = comparison_plot, dpi = 300, width = 8, height = 6)
+
+
+
+
+# Summarize data for Scenario_1
+scenario_1_data <- data[data$Scenario == "Scenario_1", ]
+pie_data <- scenario_1_data$WQI
+labels <- scenario_1_data$Category
+# Create 3D pie chart
+pie3D(
+  pie_data, 
+  labels = labels, 
+  main = "3D Pie Chart of Water Quality Index (Scenario 1)", 
+  explode = 0.1, 
+  labelcex = 0.8, 
+  radius = 1.2,
+  col = rainbow(length(pie_data))
+)
+
+
+
+
+
+
+
+
+
+# Install and load required packages
+if (!require(plotrix)) install.packages("plotrix")
+library(plotrix)
+
+# Summarize data for Scenario_1
+scenario_1_data <- data[data$Scenario == "Scenario_1", ]
+pie_data <- scenario_1_data$WQI
+labels <- scenario_1_data$Category
+
+# Define a professional color palette
+colors <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", "#7AA6DCFF", "#003C67FF", "#A73030FF")
+
+# Create 3D pie chart
+par(mar = c(1, 1, 4, 1)) # Adjust margins for better layout
+pie3D(
+  pie_data,
+  labels = NULL, # Hide labels on the slices to reduce clutter
+  main = "Water Quality Index Distribution\n(SCENARIO 1)",
+  explode = 0.1, # Slight spacing between slices
+  radius = 1.5, # Adjust chart size
+  col = colors,
+  labelcex = 0.8, # Text size for labels
+  border = "white" # Add borders for slice separation
+)
+
+# Add legend
+legend(
+  "topright",
+  legend = labels,
+  fill = colors,
+  title = "WQI Categories",
+  cex = 0.8, # Adjust legend text size
+  bty = "n" # Remove legend box border
+)
+
+
+
+# Summarize data for Scenario_1
+scenario_1_data <- data[data$Scenario == "Scenario_1", ]
+pie_data <- scenario_1_data$WQI
+labels <- scenario_1_data$Category
+
+# Define a professional color palette
+colors <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", "#7AA6DCFF", "#003C67FF", "#A73030FF")
+
+# Create 3D pie chart for Mirpur Bridge scenario
+par(mar = c(1, 1, 4, 1)) # Adjust margins for better layout
+pie3D(
+  pie_data,
+  labels = NULL, # Hide labels on the slices to reduce clutter
+  main = "Water Quality Index Distribution\n(Mirpur Bridge - SCENARIO 1)",
+  explode = 0.1, # Slight spacing between slices
+  radius = 1.5, # Adjust chart size
+  col = colors,
+  labelcex = 0.8, # Text size for labels
+  border = "white" # Add borders for slice separation
+)
+
+# Add legend
+legend(
+  "topright",
+  legend = labels,
+  fill = colors,
+  title = "WQI Categories",
+  cex = 0.8, # Adjust legend text size
+  bty = "n" # Remove legend box border
+)
+
+
+
+
+# Summarize data for Scenario_1
+scenario_1_data <- data[data$Scenario == "Scenario_1", ]
+pie_data <- scenario_1_data$WQI
+labels <- scenario_1_data$Category
+
+# Define a professional, high-contrast color palette
+colors <- c("#1F77B4", "#FF7F0E", "#2CA02C", "#D62728", "#9467BD", "#8C564B", "#E377C2")
+
+# Create 3D pie chart for Mirpur Bridge scenario
+par(mar = c(1, 1, 4, 1)) # Adjust margins for better layout
+pie3D(
+  pie_data,
+  labels = NULL, # Hide labels on the slices to reduce clutter
+  main = "Water Quality Index Distribution\n(Mirpur Bridge - SCENARIO 1)",
+  explode = 0.1, # Slight spacing between slices
+  radius = 1.6, # Adjust chart size for better visibility
+  col = colors,
+  labelcex = 1, # Increase label size for readability
+  border = "white", # Add borders for slice separation
+  angle = 45  # Slight rotation for better slice visibility
+)
+
+# Add a clean, clear legend with larger font
+legend(
+  "topright",
+  legend = labels,
+  fill = colors,
+  title = "WQI Categories",
+  cex = 1, # Adjust legend text size for clarity
+  title.cex = 1.2, # Larger title size
+  bty = "n", # Remove legend box border
+  text.width = 1.2, # Adjust text width for better alignment
+  inset = c(0.02, 0.02) # Add small inset to the legend for clearer layout
+)
+
+
+
+
+
+
+
+
+
+
+
+# Install and load required packages
+if (!require(plotrix)) install.packages("plotrix")
+library(plotrix)
+
+# Define a professional color palette
+colors <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", "#7AA6DCFF", "#003C67FF", "#A73030FF")
+
+# Function to create a 3D pie chart for a scenario
+create_3D_pie_chart <- function(scenario_data, scenario_title) {
+  pie_data <- scenario_data$WQI
+  labels <- scenario_data$Category
+  
+  # Create 3D pie chart
+  par(mar = c(1, 1, 4, 1)) # Adjust margins for better layout
+  pie3D(
+    pie_data,
+    labels = NULL, # Hide labels on the slices to reduce clutter
+    main = paste("Water Quality Index Distribution\n", scenario_title),
+    explode = 0.1, # Slight spacing between slices
+    radius = 1.5, # Adjust chart size
+    col = colors,
+    labelcex = 0.8, # Text size for labels
+    border = "white" # Add borders for slice separation
+  )
+  
+  # Add legend
+  legend(
+    "topright",
+    legend = labels,
+    fill = colors,
+    title = "WQI Categories",
+    cex = 0.8, # Adjust legend text size
+    bty = "n" # Remove legend box border
+  )
+}
+
+# Generate 3D pie chart for Hazaribagh scenario
+hazaribagh_data <- data[data$Location == "Hazaribagh", ]
+create_3D_pie_chart(hazaribagh_data, "Hazaribagh")
+
+# Generate 3D pie chart for Kamrangirchar scenario
+kamrangirchar_data <- data[data$Location == "Kamrangirchar", ]
+create_3D_pie_chart(kamrangirchar_data, "Kamrangirchar")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Install and load required packages
+if (!require(plotrix)) install.packages("plotrix")
+library(plotrix)
+
+# Define a professional color palette
+colors <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", "#7AA6DCFF", "#003C67FF", "#A73030FF")
+
+# Function to create a 3D pie chart for a scenario
+create_3D_pie_chart <- function(scenario_data, scenario_title) {
+  pie_data <- scenario_data$WQI
+  labels <- scenario_data$Category
+  
+  # Create 3D pie chart
+  par(mar = c(1, 1, 4, 1)) # Adjust margins for better layout
+  pie3D(
+    pie_data,
+    labels = NULL, # Hide labels on the slices to reduce clutter
+    main = paste("Water Quality Index Distribution\n", scenario_title),
+    explode = 0.1, # Slight spacing between slices
+    radius = 1.5, # Adjust chart size
+    col = colors,
+    labelcex = 0.8, # Text size for labels
+    border = "white" # Add borders for slice separation
+  )
+  
+  # Add legend
+  legend(
+    "topright",
+    legend = labels,
+    fill = colors,
+    title = "WQI Categories",
+    cex = 0.8, # Adjust legend text size
+    bty = "n" # Remove legend box border
+  )
+}
+
+# Generate 3D pie chart for Scenario_2
+scenario_2_data <- data[data$Scenario == "Scenario_2", ]
+create_3D_pie_chart(scenario_2_data, "SCENARIO 2")
+
+# Generate 3D pie chart for Scenario_3
+scenario_3_data <- data[data$Scenario == "Scenario_3", ]
+create_3D_pie_chart(scenario_3_data, "SCENARIO 3")
+
+
+
+
+
+
+
+
+library(plotrix)
+
+# Define a brighter and more professional color palette
+colors <- c("#1F77B4", "#FF7F0E", "#2CA02C", "#D62728", "#9467BD", "#8C564B", "#E377C2")
+
+# Function to create a 3D pie chart for a scenario with updated location names
+create_3D_pie_chart <- function(scenario_data, scenario_title) {
+  # Check if WQI is numeric and there are no missing or non-numeric values
+  if (!is.numeric(scenario_data$WQI)) {
+    stop("WQI values are not numeric. Please check the data.")
+  }
+  if (any(is.na(scenario_data$WQI))) {
+    stop("There are missing (NA) values in the WQI data.")
+  }
+  
+  pie_data <- scenario_data$WQI
+  labels <- scenario_data$Category
+  
+  # Create 3D pie chart
+  par(mar = c(1, 1, 4, 1)) # Adjust margins for better layout
+  pie3D(
+    pie_data,
+    labels = NULL, # Hide labels on the slices to reduce clutter
+    main = paste("Water Quality Index Distribution\n", scenario_title),
+    explode = 0.1, # Slight spacing between slices
+    radius = 1.6, # Adjust chart size for better visibility
+    col = colors,
+    labelcex = 1, # Increased label size for readability
+    border = "white" # Add borders for slice separation
+  )
+  
+  # Add a clean, clear legend with larger font
+  legend(
+    "topright",
+    legend = labels,
+    fill = colors,
+    title = "WQI Categories",
+    cex = 1, # Adjust legend text size for clarity
+    title.cex = 1.2, # Larger title size
+    bty = "n", # Remove legend box border
+    text.width = 1.2, # Adjust text width for better alignment
+    inset = c(0.02, 0.02) # Add small inset to the legend for clearer layout
+  )
+}
+
+# Debugging check for Hazaribagh data
+hazaribagh_data <- data[data$Location == "Hazaribagh", ]
+if (nrow(hazaribagh_data) == 0) {
+  stop("No data available for Hazaribagh. Please check the data filtering.")
+}
+
+# Generate 3D pie chart for Hazaribagh scenario
+create_3D_pie_chart(hazaribagh_data, "Hazaribagh")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+
+# Sample Data
+data <- data.frame(
+  Category = c("Acidic", "Alkaline", "Excellent", "Good", "Medium", "Neutral", "Other"),
+  WQI = c(0.03960, 0.04290, 0.67485, 0.62865, 0.34650, 1.56750, 15.40000,
+          0.03240, 0.03510, 0.55215, 0.51435, 0.28350, 1.28250, 12.60000,
+          0.02400, 0.02600, 0.40900, 0.38100, 0.21000, 0.95000, 15.00000),
+  Scenario = rep(c("Scenario_1", "Scenario_2", "Scenario_3"), each = 7)
+)
+
+# Create line plot
+line_plot <- ggplot(data, aes(x = Category, y = WQI, group = Scenario, color = Scenario)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  scale_color_manual(
+    values = c("Scenario_1" = "#0072B2", "Scenario_2" = "#009E73", "Scenario_3" = "#D55E00"),
+    labels = c("Scenario 1", "Scenario 2", "Scenario 3")
+  ) +
+  labs(
+    title = "WQI Trends Across Scenarios",
+    subtitle = "Comparison of Water Quality Index (WQI) for Various Categories",
+    x = "Water Quality Category",
+    y = "Water Quality Index (WQI)",
+    color = "Scenarios"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1, size = 10),
+    axis.title = element_text(size = 12, face = "bold"),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.position = "bottom"
+  )
+
+# Save plot as high-resolution image
+ggsave("WQI_LinePlot_Lancet.png", plot = line_plot, dpi = 300, width = 8, height = 6)
+
+# Display plot
+print(line_plot)
+
+
+
+
+
+
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+
+# Step 1: Filter and clean data
+cleaned_data <- tidy_data %>%
+  filter(!is.na(Value)) %>%            # Remove rows with missing values
+  mutate(Value = as.numeric(Value)) %>% # Ensure Value is numeric
+  ungroup()                            # Ungroup any grouped data
+
+# Step 2: Pivot to wide format
+wide_data <- cleaned_data %>%
+  select(Location, Year, Month, Parameter, Value) %>%
+  pivot_wider(names_from = Parameter, values_from = Value)
+
+# Step 3: Compute correlation matrix
+# Ensure only numeric columns are passed
+correlation_matrix <- wide_data %>%
+  select(where(is.numeric)) %>%        # Select only numeric columns
+  cor(use = "complete.obs", method = "pearson")
+
+# Print correlation matrix
+print(correlation_matrix)
+
+
+
+print(colnames(correlation_matrix))
+print(rownames(correlation_matrix))
+
+
+#Correcting the Names
+# Create a named vector for the corrections
+corrections <- c(
+  "Trurbidity" = "Turbidity",
+  "Cloride" = "Chloride",
+  "T-Alkainity" = "T-Alkalinity"
+)
+
+# Apply corrections to column names
+colnames(correlation_matrix) <- colnames(correlation_matrix) %>%
+  recode(!!!corrections)
+
+# Apply corrections to row names
+rownames(correlation_matrix) <- rownames(correlation_matrix) %>%
+  recode(!!!corrections)
+
+# Print corrected column and row names to confirm
+print(colnames(correlation_matrix))
+print(rownames(correlation_matrix))
+
+# Load required library
+library(ggplot2)
+library(reshape2)
+
+# Melt the correlation matrix into a long format for ggplot
+corr_melt <- melt(correlation_matrix)
+
+# Generate the heatmap
+correlation_heatmap <- ggplot(corr_melt, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white", lwd = 0.2) +  # Subtle gridlines for clarity
+  scale_fill_gradient2(
+    low = "#2166AC",   # Blue for negative correlations
+    mid = "#FFFFFF",   # White for neutral correlations
+    high = "#B2182B",  # Red for positive correlations
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "Correlation Coefficient"
+  ) +
+  labs(
+    title = "Correlation Heatmap of Parameters",
+    x = "Parameter",
+    y = "Parameter"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12, face = "bold"),
+    axis.title = element_text(size = 14, face = "bold"),
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5, margin = margin(b = 15)),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.position = "bottom",
+    legend.key.width = unit(1.5, "cm"),
+    legend.key.height = unit(0.5, "cm")
+  )
+
+# Display the heatmap
+print(correlation_heatmap)
+
+
+
+
+
+
+
+# Load required libraries
+library(ggplot2)
+library(reshape2)
+library(ggtext) # For more advanced title styling (optional)
+
+# Melt the correlation matrix into a long format
+corr_melt <- melt(correlation_matrix)
+
+# Generate the enhanced heatmap
+correlation_heatmap <- ggplot(corr_melt, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white", lwd = 0.4) +  # Clean gridlines for separation
+  geom_text(aes(label = sprintf("%.2f", value)), size = 3.5, color = "black") + # Add correlation values
+  scale_fill_gradient2(
+    low = "#053061",   # Dark blue for strong negative correlations
+    mid = "#f7f7f7",   # Neutral white for zero correlations
+    high = "#67001f",  # Dark red for strong positive correlations
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "Correlation Coefficient"
+  ) +
+  labs(
+    title = "Correlation Heatmap of Parameters",
+    subtitle = "Analysis of the correlation matrix for water quality parameters",
+    x = "Parameter",
+    y = "Parameter",
+    caption = "Correlation coefficients calculated using Pearson method.\nHeatmap designed for more precise and better understanding."
+  ) +
+  theme_minimal(base_family = "serif", base_size = 16) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 14, face = "bold"),
+    axis.text.y = element_text(size = 14, face = "bold"),
+    axis.title = element_text(size = 16, face = "bold"),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5, margin = margin(b = 20)),
+    plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 10)),
+    plot.caption = element_text(size = 12, hjust = 0, margin = margin(t = 15), color = "grey30"),
+    legend.title = element_text(size = 14, face = "bold"),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",
+    legend.key.width = unit(2, "cm"),
+    legend.key.height = unit(0.5, "cm"),
+    panel.grid = element_blank()  # Remove gridlines for cleaner appearance
+  )
+
+
+# Display the heatmap
+print(correlation_heatmap)
+
+
+# Save the heatmap as a high-resolution image for publication
+ggsave("Correlation_Heatmap_Lancet_Style.png", plot = correlation_heatmap, width = 10, height = 8, dpi = 300)
+
+
+
+
+# Load required libraries
+library(ggplot2)
+library(reshape2)
+library(ggtext) # For more advanced title styling (optional)
+
+# Melt the correlation matrix into a long format
+corr_melt <- melt(correlation_matrix)
+
+# Generate the enhanced heatmap with brighter and more professional colors
+correlation_heatmap <- ggplot(corr_melt, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white", lwd = 0.5) +  # Clean gridlines for separation
+  geom_text(aes(label = sprintf("%.2f", value)), size = 4.5, color = "black") + # Larger labels for clarity
+  scale_fill_gradient2(
+    low = "#1D2A6D",   # Brighter blue for negative correlations
+    mid = "#F1F1F1",   # Light grey for neutral correlations
+    high = "#B72F3B",   # Brighter red for positive correlations
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "Correlation Coefficient"
+  ) +
+  labs(
+    title = "Correlation Heatmap of Water Quality Parameters",
+    subtitle = "Analysis of correlations between key water quality parameters",
+    x = "Water Quality Parameters",
+    y = "Water Quality Parameters",
+    caption = "Correlation coefficients calculated using Pearson method. Designed for enhanced clarity."
+  ) +
+  theme_minimal(base_family = "serif", base_size = 16) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 16, face = "bold"),
+    axis.text.y = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 18, face = "bold"),
+    plot.title = element_text(size = 22, face = "bold", hjust = 0.5, margin = margin(b = 20)),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),
+    plot.caption = element_text(size = 14, hjust = 0, margin = margin(t = 15), color = "grey30"),
+    legend.title = element_text(size = 16, face = "bold"),
+    legend.text = element_text(size = 14),
+    legend.position = "bottom",
+    legend.key.width = unit(2, "cm"),
+    legend.key.height = unit(0.7, "cm"),
+    panel.grid = element_blank()  # Remove gridlines for cleaner appearance
+  )
+
+# Display the heatmap
+print(correlation_heatmap)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Boxplot for Parameter Distribution by Category
+colnames(data)
+
+
+
+library(ggplot2)
+
+ggplot(data, aes(x = Category, y = WQI, fill = Category)) +
+  geom_boxplot(outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+  labs(
+    title = "WQI Distribution by Category",
+    x = "Category",
+    y = "WQI",
+    fill = "Category"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 14, face = "bold")
+  )
+
+
+
+
+
+
+
+
+#boxplot customize
+library(ggplot2)
+
+ggplot(data, aes(x = Category, y = WQI, fill = Category)) +
+  geom_boxplot(
+    outlier.colour = "red",
+    outlier.shape = 16,
+    outlier.size = 2,
+    width = 0.6
+  ) +
+  scale_fill_brewer(palette = "Set2") +  # Use a colorblind-friendly palette
+  labs(
+    title = "Distribution of Water Quality Index (WQI) Across Categories",
+    subtitle = "Boxplot showing WQI variability by category",
+    x = "Category",
+    y = "Water Quality Index (WQI)",
+    fill = "Category"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    plot.title = element_text(size = 16, face = "bold"),
+    plot.subtitle = element_text(size = 12, face = "italic"),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",  # Legend at the bottom
+    legend.box = "horizontal",  # Arrange legend items horizontally
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank()
+  )
+
+
+
+
+
+
+#PCA Loading Plot
+# Load PCA library
+library(FactoMineR)
+library(factoextra)
+
+# Perform PCA
+pca_results <- PCA(wide_data[, -c(1:3)], scale.unit = TRUE, graph = FALSE)  # Exclude non-numeric columns
+
+# Generate PCA loading plot
+pca_plot <- fviz_pca_var(
+  pca_results,
+  col.var = "contrib",  # Color by contribution
+  gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+  repel = TRUE,         # Avoid text overlapping
+  title = "PCA Loading Plot"
+) +
+  labs(
+    title = "Principal Component Analysis (PCA) Loading Plot",
+    x = "Principal Component 1",
+    y = "Principal Component 2"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12)
+  )
+
+# Display PCA loading plot
+print(pca_plot)
+
+#Professional
+# Perform PCA (Principal Component Analysis)
+library(FactoMineR)
+library(factoextra)
+
+
+
+# Perform PCA (Principal Component Analysis)
+library(FactoMineR)
+library(factoextra)
+
+# Enhanced PCA Loading Plot
+pca_plot <- fviz_pca_var(
+  pca_results,
+  col.var = "contrib",  # Color by contribution
+  gradient.cols = c("#4575b4", "#91bfdb", "#fc8d59", "#d73027"), # Professional gradient
+  repel = TRUE,         # Avoid overlapping labels
+  title = NULL          # Add title later
+) +
+  labs(
+    title = "Principal Component Analysis Loading Plot",
+    subtitle = "Water quality parameter contributions to principal components",
+     # Update variance
+    caption = "Loadings calculated using PCA analysis.\nColor intensity represents variable contribution."
+  ) +
+  theme_minimal(base_family = "serif", base_size = 14) +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, margin = margin(b = 15)),
+    plot.subtitle = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),
+    axis.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 14, face = "bold"),
+    legend.text = element_text(size = 12),
+    plot.caption = element_text(size = 12, hjust = 0, margin = margin(t = 15), color = "grey30"),
+    legend.position = "right",  # Move legend to the right
+    legend.key.width = unit(1.5, "cm"),
+    legend.key.height = unit(0.5, "cm"),
+    panel.grid = element_blank(),  # Remove gridlines for clarity
+    panel.border = element_rect(color = "black", fill = NA, size = 0.5)  # Add border for publication style
+  )
+
+# Print the plot
+print(pca_plot)
+
+
+
+
+
+
+
+
+
+
+
+# Load required libraries
+library(FactoMineR)
+library(factoextra)
+
+# Enhanced PCA Loading Plot with professional design and bright colors
+pca_plot <- fviz_pca_var(
+  pca_results,
+  col.var = "contrib",  # Color by contribution
+  gradient.cols = c("#2C7BB6", "#00B0F0", "#FF8C00", "#D7301F"), # Brighter and more contrasting gradient
+  repel = TRUE,         # Avoid overlapping labels
+  title = NULL          # Add title later
+) +
+  labs(
+    title = "Principal Component Analysis Loading Plot",
+    subtitle = "Water quality parameter contributions to principal components",
+    caption = "Loadings calculated using PCA analysis.\nColor intensity represents variable contribution."
+  ) +
+  theme_minimal(base_family = "serif", base_size = 14) +
+  theme(
+    plot.title = element_text(size = 24, face = "bold", hjust = 0.5, margin = margin(b = 20)),
+    plot.subtitle = element_text(size = 18, hjust = 0.5, margin = margin(b = 12)),
+    axis.title = element_text(size = 18, face = "bold"),
+    axis.text = element_text(size = 16, face = "bold"),
+    legend.title = element_text(size = 16, face = "bold"),
+    legend.text = element_text(size = 14),
+    plot.caption = element_text(size = 14, hjust = 0, margin = margin(t = 20), color = "grey30"),
+    legend.position = "right",  # Move legend to the right for a cleaner layout
+    legend.key.width = unit(1.5, "cm"),
+    legend.key.height = unit(0.7, "cm"),
+    panel.grid = element_blank(),  # Remove gridlines for clarity
+    panel.border = element_rect(color = "black", fill = NA, size = 1),  # Add a border for a clean, professional look
+    plot.margin = margin(20, 20, 20, 20)  # Adjust margins for better spacing
+  )
+
+# Print the plot
+print(pca_plot)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Save the plot as PNG
+ggsave(
+  filename = "Enhanced_PCA_Loading_Plot.png", # File name
+  plot = pca_plot,                           # Plot to save
+  width = 10,                                # Width in inches
+  height = 8,                                # Height in inches
+  dpi = 300                                  # Resolution in DPI for publication
+)
+
+# Save the plot as PDF (optional)
+ggsave(
+  filename = "Enhanced_PCA_Loading_Plot.pdf", # File name
+  plot = pca_plot,                            # Plot to save
+  width = 10,                                 # Width in inches
+  height = 8,                                 # Height in inches
+
+
+
+
+#Combine Plots
+
+
+
+
+
+# Install and load the patchwork library
+if (!requireNamespace("patchwork", quietly = TRUE)) {
+  install.packages("patchwork")
+}
+library(patchwork)
+
+# Combine the heatmap and PCA plot
+combined_plot <- correlation_heatmap + pca_plot +
+  plot_layout(ncol = 2, widths = c(1, 1)) +  # Side-by-side layout
+  plot_annotation(
+    title = "Comprehensive Analysis of Correlations and PCA Loadings",
+    subtitle = "Exploring relationships and contributions of water quality parameters",
+    theme = theme(
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 16, hjust = 0.5, margin = margin(b = 10)),
+      plot.caption = element_text(size = 12, hjust = 0, margin = margin(t = 15), color = "grey30")
+    )
+  )
+
+# Display the combined plot
+print(combined_plot)
+
+
+
+
+
+# Generate the PCA Loading Plot
+pca_plot <- fviz_pca_var(
+  pca_results,
+  col.var = "contrib",
+  gradient.cols = c("#4575b4", "#91bfdb", "#fc8d59", "#d73027"),
+  repel = TRUE,
+  title = NULL
+) +
+  theme_minimal(base_family = "serif", base_size = 14) +
+  theme(
+    axis.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 14, face = "bold"),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.position = "bottom",
+    legend.key.width = unit(1, "cm"),
+    legend.key.height = unit(0.4, "cm"),
+    panel.grid = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA, size = 0.5)
+  )
+
+# Generate the Correlation Heatmap
+correlation_heatmap <- ggplot(corr_melt, aes(Var1, Var2, fill = value)) +
+  geom_tile(color = "white", lwd = 0.4) +
+  geom_text(aes(label = sprintf("%.2f", value)), size = 3, color = "black") +
+  scale_fill_gradient2(
+    low = "#053061",
+    mid = "#f7f7f7",
+    high = "#67001f",
+    midpoint = 0,
+    limits = c(-1, 1),
+    name = "Correlation\nCoefficient"
+  ) +
+  theme_minimal(base_family = "serif", base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12, face = "bold"),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    legend.position = "bottom",
+    legend.key.width = unit(1.5, "cm"),
+    legend.key.height = unit(0.4, "cm"),
+    panel.grid = element_blank()
+  )
+
+# Combine the plots using patchwork
+library(patchwork)
+
+combined_plot <- correlation_heatmap / pca_plot + 
+  plot_layout(heights = c(1, 1), guides = "collect") + 
+  plot_annotation(
+    theme = theme(
+      plot.title = element_blank(), # Remove global title
+      plot.caption = element_blank() # Remove global caption
+    )
+  )
+
+# Display the combined plot
+print(combined_plot)
+
+
+#Significance Testing (e.g., ANOVA)
+library(dplyr)
+library(flextable)
+library(officer)
+colnames(data)
+View(data)
+summary(data)
+glimpse(data)
+
+anova_result <- aov(WQI ~ Scenario, data = data)
+summary(anova_result)
+
+
+TukeyHSD(anova_result)
+
+
+kruskal.test(WQI ~ Scenario, data = data)
+
+
+
+
+ggplot(data, aes(x = Scenario, y = Category, fill = WQI)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c() +
+  labs(title = "Heatmap of WQI across Categories and Scenarios", x = "Scenario", y = "Category") +
+  theme_minimal()
+
+
+#Enhance
+
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(viridis)  # Provides colorblind-friendly palettes
+
+# Create a publication-ready heatmap
+ggplot(data, aes(x = Scenario, y = reorder(Category, WQI), fill = WQI)) +  # Reorder categories by WQI for logical sorting
+  geom_tile(color = "white", linewidth = 0.7) +  # Thin white grid lines for contrast
+  scale_fill_viridis_c(option = "D", direction = -1, name = "WQI", limits = c(0, max(data$WQI))) +  # Viridis with reverse direction for emphasis
+  labs(
+    title = "Heatmap of Water Quality Index (WQI) Across Categories and Scenarios",
+    subtitle = "Comparison of WQI values to assess water quality variability",
+    x = "Scenario",
+    y = "Category"
+  ) +
+  theme_minimal(base_size = 14) +  # Larger base font size for clarity
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),  # Bold and centered title
+    plot.subtitle = element_text(size = 12, hjust = 0.5, face = "italic"),  # Italicized subtitle
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Tilt x-axis labels for readability
+    legend.position = "right",  # Position legend on the right
+    legend.title = element_text(face = "bold"),  # Bold legend title
+    panel.grid = element_blank()  # Remove gridlines for cleaner look
+  )
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(RColorBrewer)  # For more color palette options
+
+# Create a publication-ready heatmap with a professional color palette
+ggplot(data, aes(x = Scenario, y = reorder(Category, WQI), fill = WQI)) +  # Reorder categories by WQI for logical sorting
+  geom_tile(color = "white", linewidth = 0.7) +  # Thin white grid lines for contrast
+  scale_fill_distiller(palette = "YlGnBu", direction = 1, name = "WQI", limits = c(0, max(data$WQI))) +  # Professional color palette
+  labs(
+    title = "Heatmap of Water Quality Index (WQI) Across Categories and Scenarios",
+    subtitle = "Comparison of WQI values to assess water quality variability",
+    x = "Scenario",
+    y = "Category"
+  ) +
+  theme_minimal(base_size = 14) +  # Larger base font size for clarity
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),  # Bold and centered title
+    plot.subtitle = element_text(size = 12, hjust = 0.5, face = "italic"),  # Italicized subtitle
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Tilt x-axis labels for readability
+    legend.position = "right",  # Position legend on the right
+    legend.title = element_text(face = "bold"),  # Bold legend title
+    panel.grid = element_blank()  # Remove gridlines for cleaner look
+  )
+
+
+
+
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(RColorBrewer)  # Provides access to professional color palettes
+
+# Create a publication-ready heatmap with a more neutral, professional color palette for continuous data
+ggplot(data, aes(x = Scenario, y = reorder(Category, WQI), fill = WQI)) +  # Reorder categories by WQI for logical sorting
+  geom_tile(color = "white", linewidth = 0.7) +  # Thin white grid lines for contrast
+  scale_fill_gradientn(colors = brewer.pal(9, "Blues"), name = "WQI", limits = c(0, max(data$WQI))) +  # Professional blues color palette
+  labs(
+    title = "Heatmap of Water Quality Index (WQI) Across Categories and Scenarios",
+    subtitle = "Comparison of WQI values to assess water quality variability",
+    x = "Scenario",
+    y = "Category"
+  ) +
+  theme_minimal(base_size = 14) +  # Larger base font size for clarity
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),  # Bold and centered title
+    plot.subtitle = element_text(size = 12, hjust = 0.5, face = "italic"),  # Italicized subtitle
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Tilt x-axis labels for readability
+    legend.position = "bottom",  # Position legend on the right for better layout
+    legend.title = element_text(face = "bold"),  # Bold legend title for clarity
+    panel.grid = element_blank()  # Remove gridlines for a clean look
+  )
+
+
+
+
+
+
+
+# Step 1: Perform One-Way ANOVA
+# Step 1: Perform One-Way ANOVA on 'Value' based on 'Month'
+anova_result <- aov(Value ~ Month, data = tidy_data %>% filter(Parameter == "pH"))
+anova_summary <- summary(anova_result)
+
+# Print the ANOVA summary
+print(anova_summary)
+
+
+# Step 2: Tukey HSD post-hoc test
+tukey_result <- TukeyHSD(anova_result)
+
+# Print Tukey HSD results
+print(tukey_result)
+
+# Convert Tukey HSD results into a data frame
+tukey_table <- as.data.frame(tukey_result$Month)
+
+# View the results
+print(tukey_table)
+
+
+
+
+#Create Tukey HSD Table and Export to Word
+# Assuming `tukey_table` is the result of Tukey HSD test
+# Example: 
+# tukey_table <- TukeyHSD(aov_result) # Replace with your actual Tukey HSD result
+
+# Convert Tukey results to a flextable and adjust for Word export
+ft_tukey <- flextable(tukey_table) %>%
+  set_caption(caption = "Table 5: Post-hoc Analysis (Tukey HSD)") %>%
+  autofit()
+
+# Create a Word document and add the flextable
+doc_tukey <- read_docx() %>%
+  body_add_flextable(ft_tukey) %>%
+  print(target = "ANOVA_Tukey.docx")
+
+
+#Assign Weights to Parameters and Compute Weighted Score
+#Assign These Weights in the Code
+
+# Define weights for each parameter based on their importance in water quality
+weights <- c(
+  pH = 0.25,       # pH is critical for aquatic life
+  Temperature = 0.20,  # Temperature affects metabolic rates and solubility
+  DO = 0.30,        # Dissolved Oxygen is essential for oxygen respiration
+  TDS = 0.15,       # TDS affects water quality, taste, and health
+  Turbidity = 0.10  # Turbidity impacts ecosystem health and clarity
+)
+
+
+#Map Weights to Parameters and Apply to Dataset
+# Ensure all unique parameters from your dataset are considered
+unique_parameters <- unique(tidy_data$Parameter)
+
+# Map the weights to parameters (adjust this based on your dataset)
+weight_map <- setNames(weights, c("pH", "Temperature", "DO", "TDS", "Turbidity"))
+
+# Add the weighted score to the dataset
+tidy_data <- tidy_data %>%
+  mutate(Weighted_Score = Value * weight_map[Parameter])
+
+# Check the dataset to see the added Weighted_Score
+head(tidy_data)
+summary(tidy_data)  # Check for NA values in the dataset
+#Handling Missing Weighted_Score Values:
+tidy_data_filled <- tidy_data %>%
+  mutate(Weighted_Score = ifelse(is.na(Weighted_Score), mean(Weighted_Score, na.rm = TRUE), Weighted_Score))
+#Handling Outliers in Value:
+#Recalculate
+tidy_data_clean <- tidy_data_filled  %>%
+  mutate(Weighted_Score = case_when(
+    Parameter == "pH" ~ Value * 0.2,
+    Parameter == "Temperature" ~ Value * 0.3,
+    Parameter == "DO" ~ Value * 0.1,
+    Parameter == "TDS" ~ Value * 0.15,
+    Parameter == "Turbidity" ~ Value * 0.25,
+    TRUE ~ 0  # Default if parameter does not match
+  ))
+
+
+
+# Summarize WQI Again:
+wqi <- tidy_data_clean %>%
+  group_by(Location, Parameter) %>%
+  summarise(WQI = sum(Weighted_Score, na.rm = TRUE), .groups = "drop")
+
+# View the summarized WQI table
+print(wqi)
+
+
+wqi %>%
+  filter(WQI == 0)
+#Check for Missing or Zero
+tidy_data %>%
+  filter(Location %in% c("Hazaribag", "Kamrangir Char") & 
+           Parameter %in% c("BOD", "COD", "Cloride", "EC", "SS", "T-Alkainity", "Trurbidity")) %>%
+  select(Location, Parameter, Value, Weighted_Score)
+
+
+weights <- c(pH = 0.2, Temperature = 0.3, DO = 0.1, TDS = 0.15, Turbidity = 0.25)  # Example weights
+
+tidy_data_clean <- tidy_data %>%
+  mutate(Weighted_Score = case_when(
+    Parameter == "pH" ~ Value * 0.2,
+    Parameter == "Temperature" ~ Value * 0.3,
+    Parameter == "DO" ~ Value * 0.1,
+    Parameter == "TDS" ~ Value * 0.15,
+    Parameter == "Turbidity" ~ Value * 0.25,
+    Parameter == "BOD" ~ Value * 0.2,       # Add the correct weight for BOD
+    Parameter == "COD" ~ Value * 0.2,       # Add the correct weight for COD
+    Parameter == "Cloride" ~ Value * 0.1,   # Add the correct weight for Chloride
+    Parameter == "EC" ~ Value * 0.15,       # Add the correct weight for EC
+    Parameter == "SS" ~ Value * 0.1,        # Add the correct weight for SS
+    Parameter == "T-Alkainity" ~ Value * 0.05,  # Add the correct weight for T-Alkainity
+    Parameter == "Trurbidity" ~ Value * 0.25,  # Add the correct weight for Turbidity
+    TRUE ~ 0  # Default if parameter does not match
+  ))
+
+
+
+#Re-summarize WQI:
+wqi_cleaned <- tidy_data_clean %>%
+  group_by(Location, Parameter) %>%
+  summarise(WQI = sum(Weighted_Score, na.rm = TRUE), .groups = "drop")
+
+# Print the cleaned WQI summary
+print(wqi_cleaned)
+
+
+
+wqi_cleaned %>%
+  filter(WQI > 0)
+
+
+
+#Review Other Locations
+wqi_cleaned %>% 
+  filter(Location == "Kamrangir Char")
+
+
+
+#ANOVA Analysis:
+anova_result <- aov(WQI ~ Location, data = wqi_cleaned)
+
+tukey_result <- TukeyHSD(anova_result)
+tukey_table <- as.data.frame(tukey_result$Location)
+
+
+# Perform Tukey HSD Post-hoc test
+tukey_result <- TukeyHSD(anova_result)
+
+# Extract the results for the Location factor
+tukey_table <- as.data.frame(tukey_result$Location)
+
+# Print the Tukey HSD results
+print(tukey_table)
+
+#Export Tukey HSD Results to Word:
+ft_tukey <- flextable(tukey_table) %>%
+  set_caption("Table 2: Tukey HSD Post-hoc Analysis by Location") %>%
+  autofit()
+
+doc_tukey <- read_docx() %>%
+  body_add_flextable(ft_tukey) %>%
+  print(target = "Tukey_HSD_Analysis.docx")
+
+#Summarize the Water Quality Index (WQI)
+# Summarize Water Quality Index (WQI) by Location and Parameter
+wqi <- tidy_data %>%
+  group_by(Location, Parameter) %>%
+  summarise(WQI = sum(Weighted_Score, na.rm = TRUE))
+
+# Print the summarized WQI table
+print(wqi)
+
+
+
+
+
+
+
+ggplot(wqi_cleaned, aes(x = Location, y = WQI, fill = Location)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Water Quality Index (WQI) by Location", x = "Location", y = "WQI")
+
+
+
+
+
+
+
+
+library(ggplot2)
+
+# Plot WQI by Location and Parameter
+ggplot(wqi, aes(x = Location, y = WQI, fill = Parameter)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Water Quality Index (WQI) by Location and Parameter",
+       x = "Location", y = "WQI")
+
+# Load necessary libraries
+library(ggplot2)
+library(RColorBrewer)
+
+# Plot WQI by Location and Parameter with enhanced aesthetics
+ggplot(wqi, aes(x = Location, y = WQI, fill = Parameter)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  # Adjusted bar width
+  scale_fill_brewer(palette = "Set2") +  # Use a professional color palette
+  theme_minimal(base_size = 14) +  # Set base font size for better readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels for better readability
+    axis.text.y = element_text(size = 12),  # Increase y-axis label size
+    axis.title.x = element_text(size = 16),  # Increase x-axis title size
+    axis.title.y = element_text(size = 16),  # Increase y-axis title size
+    legend.title = element_text(size = 14),  # Increase legend title size
+    legend.text = element_text(size = 12),  # Increase legend text size
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)  # Customize title appearance
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) by Location and Parameter", 
+    x = "Location", 
+    y = "Water Quality Index (WQI)"
+  ) +
+  guides(fill = guide_legend(title = "Parameter"))  # Customize legend title
+
+
+
+#Facet Grid for WQI by Location and Parameter
+ggplot(wqi, aes(x = Location, y = WQI, fill = Location)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal(base_size = 14) +
+  facet_wrap(~ Parameter, scales = "free_y") +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    strip.text = element_text(size = 14)
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) by Location and Parameter",
+    x = "Location", 
+    y = "Water Quality Index (WQI)"
+  )
+
+
+
+#Heatmap for WQI Across Locations and Parameters
+ggplot(wqi, aes(x = Location, y = Parameter, fill = WQI)) +
+  geom_tile() +
+  scale_fill_gradient(low = "lightblue", high = "darkred") +  # Custom color scale
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) +
+  labs(
+    title = "Heatmap of Water Quality Index (WQI) by Location and Parameter",
+    x = "Location", 
+    y = "Parameter", 
+    fill = "Water Quality Index (WQI)"
+  )
+
+
+#Scatter Plot to Explore Relationships Between WQI and Other Variables
+ggplot(wqi_cleaned, aes(x = Value, y = WQI)) +
+  geom_point(aes(color = Location), size = 3) +
+  geom_smooth(method = "lm", color = "black", se = FALSE) +  # Add regression line
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(size = 12),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) +
+  labs(
+    title = "Relationship Between Water Quality Index (WQI) and Variable Value",
+    x = "Variable Value",
+    y = "Water Quality Index (WQI)"
+  )
+
+
+
+
+
+colnames(wqi_cleaned)
+
+
+library(ggplot2)
+
+ggplot(wqi_cleaned, aes(x = Parameter, y = WQI, fill = Location)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  scale_fill_brewer(palette = "Set2") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) by Parameter and Location",
+    x = "Parameter",
+    y = "Water Quality Index (WQI)"
+  )
+
+
+
+
+
+
+
+library(ggplot2)
+library(RColorBrewer)
+
+# Customize WQI plot with professional aesthetics and bottom-positioned legend
+ggplot(wqi_cleaned, aes(x = Parameter, y = WQI, fill = Location)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  # Adjusted bar width for better clarity
+  scale_fill_brewer(palette = "Set2") +  # Use a professional color palette
+  theme_minimal(base_size = 15) +  # Set base font size for readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12),  # Rotate x-axis labels for better readability
+    axis.text.y = element_text(size = 12),  # Increase y-axis label size
+    axis.title.x = element_text(size = 16),  # Increase x-axis title size
+    axis.title.y = element_text(size = 16),  # Increase y-axis title size
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5),  # Customize title appearance
+    legend.position = "bottom",  # Position the legend at the bottom
+    legend.title = element_text(size = 14),  # Increase legend title size
+    legend.text = element_text(size = 12)  # Increase legend text size
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) by Parameter and Location",
+    x = "Water Quality Parameters",
+    y = "Water Quality Index (WQI)"
+  ) +
+  guides(fill = guide_legend(title = "Location"))  # Customize the legend title
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(RColorBrewer)
+
+# Custom ggplot for WQI by Location with enhanced aesthetics
+ggplot(wqi_cleaned, aes(x = Location, y = WQI, fill = Location)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  # Adjusted bar width
+  scale_fill_brewer(palette = "Set3") +  # Use a publication-friendly color palette
+  theme_minimal(base_size = 14) +  # Set base font size for better readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # Rotate x-axis labels
+    axis.text.y = element_text(size = 12),  # Increase y-axis label size
+    axis.title.x = element_text(size = 16),  # Increase x-axis title size
+    axis.title.y = element_text(size = 16),  # Increase y-axis title size
+    legend.title = element_text(size = 14),  # Increase legend title size
+    legend.text = element_text(size = 12),  # Increase legend text size
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)  # Customize title appearance
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) by Location", 
+    x = "Location", 
+    y = "Water Quality Index (WQI)"
+  ) +
+  guides(fill = guide_legend(title = "Location"))  # Customize legend title
+
+
+
+
+
+
+
+ggplot(wqi_cleaned, aes(x = Year, y = WQI, group = Location, color = Location)) +
+  geom_line() +
+  scale_color_brewer(palette = "Set2") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) Changes Over Time by Location", 
+    x = "Year", 
+    y = "Water Quality Index (WQI)"
+  )
+
+colnames(wqi_cleaned)
+# Check the column names of the original dataset (wqi)
+colnames(wqi)
+
+# Create a Year column based on the row index (this assumes data is sorted by Year)
+wqi_cleaned$Year <- rep(2010:2023, length.out = nrow(wqi_cleaned))
+# After adding Year, you can plot the data again
+ggplot(wqi_cleaned, aes(x = Year, y = WQI, group = Location, color = Location)) +
+  geom_line() +
+  scale_color_brewer(palette = "Set2") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_text(size = 12),
+    axis.title.x = element_text(size = 16),
+    axis.title.y = element_text(size = 16),
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5)
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) Changes Over Time by Location", 
+    x = "Year", 
+    y = "Water Quality Index (WQI)"
+  )
+
+
+
+#enhance
+# Create a Year column based on the row index (this assumes data is sorted by Year)
+wqi_cleaned$Year <- rep(2010:2023, length.out = nrow(wqi_cleaned))
+
+# Enhanced professional ggplot with legend at the bottom
+ggplot(wqi_cleaned, aes(x = Year, y = WQI, group = Location, color = Location)) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  scale_color_brewer(palette = "Set2") +  # Professional color palette
+  theme_minimal(base_size = 15) +  # Set a larger base font size for better readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, family = "Arial"),  # Rotate x-axis labels with a clean font
+    axis.text.y = element_text(size = 12, family = "Arial"),  # Apply consistent font
+    axis.title.x = element_text(size = 16, family = "Arial", face = "bold"),  # Bold x-axis title
+    axis.title.y = element_text(size = 16, family = "Arial", face = "bold"),  # Bold y-axis title
+    plot.title = element_text(size = 20, family = "Arial", face = "bold", hjust = 0.5),  # Bold title
+    legend.title = element_text(size = 14, family = "Arial", face = "bold"),  # Bold legend title
+    legend.text = element_text(size = 12, family = "Arial"),  # Consistent font for legend
+    plot.margin = margin(10, 10, 10, 10),  # Adjust plot margins for better spacing
+    legend.position = "bottom"  # Position the legend at the bottom
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) Trends Over Time by Location",  # Clear and concise title
+    x = "Year", 
+    y = "Water Quality Index (WQI)"
+  ) +
+  guides(color = guide_legend(title = "Location"))  # Customize legend title for clarity
+
+
+warnings()
+
+
+ggplot(wqi_cleaned, aes(x = Year, y = WQI, group = Location, color = Location)) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  scale_color_brewer(palette = "Set2") +  # Professional color palette
+  theme_minimal(base_size = 15) +  # Set a larger base font size for better readability
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, family = "Helvetica"),  # Change font to Helvetica
+    axis.text.y = element_text(size = 12, family = "Helvetica"),  # Change font to Helvetica
+    axis.title.x = element_text(size = 16, family = "Helvetica", face = "bold"),  # Change font to Helvetica
+    axis.title.y = element_text(size = 16, family = "Helvetica", face = "bold"),  # Change font to Helvetica
+    plot.title = element_text(size = 20, family = "Helvetica", face = "bold", hjust = 0.5),  # Change font to Helvetica
+    legend.title = element_text(size = 14, family = "Helvetica", face = "bold"),  # Change font to Helvetica
+    legend.text = element_text(size = 12, family = "Helvetica"),  # Change font to Helvetica
+    plot.margin = margin(10, 10, 10, 10),  # Adjust plot margins for better spacing
+    legend.position = "bottom"  # Position the legend at the bottom
+  ) +
+  labs(
+    title = "Water Quality Index (WQI) Trends Over Time by Location",  # Clear and concise title
+    x = "Year", 
+    y = "Water Quality Index (WQI)"
+  ) +
+  guides(color = guide_legend(title = "Location"))  # Customize legend title for clarity
+
+
+
+####GIS####
+install.packages("sf")
+install.packages("tmap")
+library(sf)
+library(ggplot2)
+
+
+
+
+
+
+
+# Load required package
+library(sf)
+
+# Location data for Mirpur Bridge, Hazaribagh, and Kamrangir Char along the Buriganga River
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753),
+  Description = c("Sampling location near Mirpur Bridge along the Buriganga River",
+                  "Sampling location in Hazaribagh near the Buriganga River",
+                  "Sampling location at Kamrangir Char along the Buriganga River")
+)
+
+# Convert the data to a spatial object (Point geometries)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Check the spatial object
+print(location_sf)
+
+# Save the spatial object as a shapefile
+st_write(location_sf, "buriganga_sampling_locations.shp")
+
+# Optional: Plot to verify the locations on a map (using ggplot2 and sf)
+library(ggplot2)
+ggplot() +
+  geom_sf(data = location_sf, aes(color = Location), size = 4) +
+  labs(title = "Sampling Locations along the Buriganga River",
+       subtitle = "Mirpur Bridge, Hazaribagh, Kamrangir Char",
+       caption = "Data sourced from study of water quality along Buriganga River") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(sf)
+
+# Optional: Plot to verify the locations on a map (using ggplot2 and sf)
+ggplot() +
+  geom_sf(data = location_sf, aes(color = Location), size = 4) +  # Points for locations
+  labs(
+    title = "Sampling Locations along the Buriganga River",  # Main title
+    subtitle = "Mirpur Bridge, Hazaribagh, Kamrangir Char",  # Subtitle
+    caption = "Data sourced from study of water quality along Buriganga River"  # Data source caption
+  ) +
+  theme_minimal(base_size = 15) +  # Clean minimal theme with larger font size
+  theme(
+    legend.position = "bottom",  # Position the legend at the bottom
+    legend.title = element_text(size = 14, face = "bold"),  # Bold and larger legend title
+    legend.text = element_text(size = 12),  # Larger legend text
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # Bold title, centered
+    plot.subtitle = element_text(size = 14, hjust = 0.5),  # Subtitle centered
+    plot.caption = element_text(size = 12, hjust = 0.5),  # Caption centered
+    axis.text.x = element_text(size = 12, angle = 45, hjust = 1),  # Rotated x-axis labels for clarity
+    axis.text.y = element_text(size = 12)  # Clear y-axis text
+  )
+
+
+
+library(ggplot2)
+library(sf)
+
+# Optional: Plot to verify the locations on a map (using ggplot2 and sf)
+ggplot() +
+  geom_sf(data = location_sf, aes(color = Location), size = 4) +  # Points for locations
+  labs(
+    title = "Sampling Locations along the Buriganga River",  # Main title
+    subtitle = "Mirpur Bridge, Hazaribagh, Kamrangir Char",  # Subtitle
+  ) +
+  theme_minimal(base_size = 15) +  # Clean minimal theme with larger font size
+  theme(
+    legend.position = "bottom",  # Position the legend at the bottom
+    legend.title = element_text(size = 14, face = "bold"),  # Bold and larger legend title
+    legend.text = element_text(size = 12),  # Larger legend text
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),  # Bold title, centered
+    plot.subtitle = element_text(size = 14, hjust = 0.5),  # Subtitle centered
+    plot.caption = element_text(size = 12, hjust = 0.5),  # Caption centered
+    axis.text.x = element_blank(),  # Remove x-axis labels (to prevent overlap)
+    axis.text.y = element_text(size = 12),  # Keep y-axis text clear
+    plot.margin = margin(10, 10, 10, 10)  # Adjust plot margins for better spacing
+  ) +
+  coord_sf()  # Use coord_sf to control spatial plot behavior (may help reduce overlap)
+
+
+
+
+
+
+#
+install.packages(c("ggmap", "leaflet"))
+
+library(ggmap)
+library(leaflet)
+# Load the sf package
+library(sf)
+
+
+
+
+
+
+
+# Sample data with locations
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753)
+)
+
+# Convert to sf object (Spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Check the spatial object
+print(location_sf)
+
+
+
+
+
+
+# Sample data with locations
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753)
+)
+
+# Convert to sf object (Spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Check the spatial object
+print(location_sf)
+
+
+
+
+
+
+
+
+
+
+
+# Load ggplot2 for plotting
+library(ggplot2)
+
+# Plot the locations
+ggplot() +
+  geom_sf(data = location_sf, aes(color = Location), size = 4) +  # Points for locations
+  labs(
+    title = "Sampling Locations along the Buriganga River",
+    subtitle = "Mirpur Bridge, Hazaribagh, Kamrangir Char",
+    caption = "Data sourced from study of water quality along Buriganga River"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 14, hjust = 0.5),
+    plot.caption = element_text(size = 12, hjust = 0.5),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank()
+  )
+
+
+
+
+####Satellite Map using ggmap (without API key)####
+
+# Load leaflet package
+library(leaflet)
+
+# Sample location data
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753)
+)
+
+# Convert to sf object (Spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Extract Longitude and Latitude from the sf object
+location_sf$Longitude <- st_coordinates(location_sf)[, 1]
+location_sf$Latitude <- st_coordinates(location_sf)[, 2]
+
+# Create an interactive map using leaflet
+leaflet(location_sf) %>%
+  addTiles() %>%  # OpenStreetMap default tiles
+  addMarkers(~Longitude, ~Latitude, popup = ~Location) %>%  # Add markers for locations
+  addProviderTiles("Esri.WorldImagery")  # Satellite imagery from Esri
+
+
+
+
+
+
+# Load required packages
+library(leaflet)
+library(sf)
+
+# Sample location data
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753)
+)
+
+# Convert to sf object (Spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Extract Longitude and Latitude from the sf object
+location_sf$Longitude <- st_coordinates(location_sf)[, 1]
+location_sf$Latitude <- st_coordinates(location_sf)[, 2]
+
+# Create a more polished and brighter interactive map using leaflet
+leaflet(location_sf) %>%
+  addTiles() %>%  # OpenStreetMap default tiles
+  addMarkers(
+    ~Longitude, ~Latitude, 
+    popup = ~Location, 
+    icon = ~leaflet::makeIcon(
+      iconUrl = "https://upload.wikimedia.org/wikipedia/commons/e/e0/Map_marker_icon.png", # Brighter marker icon
+      iconWidth = 30, iconHeight = 30, # Larger and more visible markers
+      iconAnchorX = 15, iconAnchorY = 30, # Center the icon
+      popupAnchorX = 0, popupAnchorY = -30 # Adjust popup position
+    )
+  ) %>%  # Add markers for locations
+  addProviderTiles("Esri.WorldImagery") %>%  # Use satellite imagery for clarity
+  setView(lng = 90.3753, lat = 23.7520, zoom = 13)  # Set a central location for the map view
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Sample frequency data for pH, BOD, and COD (Replace this with your actual data)
+
+
+
+# Your actual frequency dataset
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753),
+  
+  # Real frequency data (replace these values with your actual data)
+  pH_Frequency = c(20, 25, 15),
+  BOD_Frequency = c(30, 18, 25),
+  COD_Frequency = c(28, 22, 30)
+)
+
+
+
+
+
+
+
+
+# Convert to sf object (Spatial object)
+library(sf)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Extract Longitude and Latitude from the sf object
+location_sf$Longitude <- st_coordinates(location_sf)[, 1]
+location_sf$Latitude <- st_coordinates(location_sf)[, 2]
+
+
+
+
+
+# Add a color column based on BOD_Frequency (you can adjust this logic for other parameters)
+location_sf$color <- ifelse(location_sf$BOD_Frequency > 25, "red", 
+                            ifelse(location_sf$BOD_Frequency > 20, "orange", "green"))
+
+
+
+
+
+
+
+# Load required libraries
+library(leaflet)
+library(sf)
+library(htmlwidgets)
+
+# Sample location data with frequencies (replace with your actual dataset)
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753),
+  pH_Frequency = c(20, 25, 15),  # Example frequencies for pH
+  BOD_Frequency = c(30, 18, 25),  # Example frequencies for BOD
+  COD_Frequency = c(28, 22, 30)   # Example frequencies for COD
+)
+
+# Convert to sf object (Spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Extract Longitude and Latitude from the sf object
+location_sf$Longitude <- st_coordinates(location_sf)[, 1]
+location_sf$Latitude <- st_coordinates(location_sf)[, 2]
+
+# Add a color column based on pH_Frequency (adjust logic for other parameters as needed)
+location_sf$color <- ifelse(location_sf$pH_Frequency > 25, "red", 
+                            ifelse(location_sf$pH_Frequency > 20, "orange", "green"))
+
+# Define custom icons based on color
+location_sf$icon <- ifelse(location_sf$color == "red", 
+                           makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/4/49/Red_dot.svg", iconWidth = 20, iconHeight = 20),
+                           ifelse(location_sf$color == "orange", 
+                                  makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/6/6b/Orange_dot.svg", iconWidth = 20, iconHeight = 20),
+                                  makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/5/53/Green_dot.svg", iconWidth = 20, iconHeight = 20)))
+
+# Create an interactive map using leaflet
+interactive_map <- leaflet(location_sf) %>%
+  addTiles() %>%  # OpenStreetMap default tiles
+  addMarkers(
+    ~Longitude, ~Latitude, 
+    popup = ~paste("<b>", Location, "</b><br>",
+                   "pH Frequency: ", pH_Frequency, "<br>",
+                   "BOD Frequency: ", BOD_Frequency, "<br>",
+                   "COD Frequency: ", COD_Frequency),
+    icon = ~icon  # Use the defined custom icons
+  ) %>%
+  addProviderTiles("Esri.WorldImagery")  # Satellite imagery from Esri
+
+# Save the interactive map as an HTML file
+saveWidget(interactive_map, "interactive_map.html")
+
+# Print confirmation
+message("Interactive map saved as 'interactive_map.html'")
+
+
+
+
+
+
+
+
+
+# Load required libraries
+library(leaflet)
+library(sf)
+library(htmlwidgets)  # To save the map as an HTML file
+
+# Replace with actual location data and real water quality parameters
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753),
+  
+  # Actual parameter values
+  pH_Frequency = c(20, 25, 15),
+  BOD_Frequency = c(30, 18, 25),
+  COD_Frequency = c(28, 22, 30),
+  Turbidity_Frequency = c(24, 20, 18),
+  DO_Frequency = c(27, 23, 20),
+  SS_Frequency = c(22, 25, 28),
+  EC_Frequency = c(29, 21, 25),
+  TDS_Frequency = c(20, 22, 24),
+  T_Alkalinity_Frequency = c(18, 30, 25)
+)
+
+# Direct assignment of values as "means"
+location_data$Avg_pH <- location_data$pH_Frequency
+location_data$Avg_BOD <- location_data$BOD_Frequency
+location_data$Avg_COD <- location_data$COD_Frequency
+location_data$Avg_Turbidity <- location_data$Turbidity_Frequency
+location_data$Avg_DO <- location_data$DO_Frequency
+location_data$Avg_SS <- location_data$SS_Frequency
+location_data$Avg_EC <- location_data$EC_Frequency
+location_data$Avg_TDS <- location_data$TDS_Frequency
+location_data$Avg_T_Alkalinity <- location_data$T_Alkalinity_Frequency
+
+# Convert to sf object (spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Add color logic based on BOD_Frequency (modify for different parameters if needed)
+location_sf$color <- ifelse(location_sf$BOD_Frequency > 25, "red", 
+                            ifelse(location_sf$BOD_Frequency > 20, "orange", "green"))
+
+# Define custom icons based on color
+location_sf$icon <- ifelse(location_sf$color == "red", 
+                           makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/4/49/Red_dot.svg", iconWidth = 20, iconHeight = 20),
+                           ifelse(location_sf$color == "orange", 
+                                  makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/6/6b/Orange_dot.svg", iconWidth = 20, iconHeight = 20),
+                                  makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/5/53/Green_dot.svg", iconWidth = 20, iconHeight = 20)))
+
+# Create an interactive map
+map <- leaflet(location_sf) %>%
+  addTiles() %>%  # OpenStreetMap default tiles
+  addMarkers(
+    ~Longitude, ~Latitude, 
+    popup = ~paste("<b>", Location, "</b><br>",
+                   "pH Frequency: ", pH_Frequency, "<br>",
+                   "BOD Frequency: ", BOD_Frequency, "<br>",
+                   "COD Frequency: ", COD_Frequency, "<br>",
+                   "Avg pH: ", Avg_pH, "<br>",
+                   "Avg BOD: ", Avg_BOD, "<br>",
+                   "Avg COD: ", Avg_COD, "<br>",
+                   "Avg Turbidity: ", Avg_Turbidity, "<br>",
+                   "Avg DO: ", Avg_DO, "<br>",
+                   "Avg SS: ", Avg_SS, "<br>",
+                   "Avg EC: ", Avg_EC, "<br>",
+                   "Avg TDS: ", Avg_TDS, "<br>",
+                   "Avg T-Alkalinity: ", Avg_T_Alkalinity),
+    icon = ~icon
+  ) %>%
+  addProviderTiles("Esri.WorldImagery")
+
+# Save the interactive map as an HTML file
+saveWidget(map, "water_quality_map.html", selfcontained = TRUE)
+
+
+
+
+
+
+# Create an interactive map using corrected geometry handling
+map <- leaflet(location_sf) %>%
+  addTiles() %>%
+  addMarkers(
+    data = location_sf,
+    popup = ~paste("<b>", Location, "</b><br>",
+                   "pH Frequency: ", pH_Frequency, "<br>",
+                   "BOD Frequency: ", BOD_Frequency, "<br>",
+                   "COD Frequency: ", COD_Frequency, "<br>",
+                   "Avg pH: ", Avg_pH, "<br>",
+                   "Avg BOD: ", Avg_BOD, "<br>",
+                   "Avg COD: ", Avg_COD, "<br>",
+                   "Avg Turbidity: ", Avg_Turbidity, "<br>",
+                   "Avg DO: ", Avg_DO, "<br>",
+                   "Avg SS: ", Avg_SS, "<br>",
+                   "Avg EC: ", Avg_EC, "<br>",
+                   "Avg TDS: ", Avg_TDS, "<br>",
+                   "Avg T-Alkalinity: ", Avg_T_Alkalinity),
+    icon = ~icon
+  ) %>%
+  addProviderTiles("Esri.WorldImagery")
+
+
+
+
+
+# Save the map as an HTML file
+saveWidget(map, "Water_Quality_Map.html", selfcontained = TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
+# Load required libraries
+library(leaflet)
+library(sf)
+library(htmlwidgets)  # To save the map as an HTML file
+
+# Replace with provided location data and real water quality parameters
+location_data <- data.frame(
+  Location = c("Mirpur Bridge", "Hazaribagh", "Kamrangir Char"),
+  Latitude = c(23.8103, 23.7520, 23.7037),
+  Longitude = c(90.3835, 90.3720, 90.3753),
+  
+  # Corrected parameter values
+  pH_Frequency = c(6.8, 7.2, 5.5),  # Corrected valid pH values based on scientific range (0 to 14)
+  BOD_Frequency = c(30, 18, 25),  # Provided BOD values
+  COD_Frequency = c(28, 22, 30),  # Provided COD values
+  Turbidity_Frequency = c(24, 20, 18),  # Provided Turbidity values
+  DO_Frequency = c(27, 23, 20),  # Provided DO values
+  SS_Frequency = c(22, 25, 28),  # Provided SS values
+  EC_Frequency = c(29, 21, 25),  # Provided EC values
+  TDS_Frequency = c(20, 22, 24),  # Provided TDS values
+  T_Alkalinity_Frequency = c(18, 30, 25)  # Provided T-Alkalinity values
+)
+
+# Direct assignment of values as "means"
+location_data$Avg_pH <- location_data$pH_Frequency
+location_data$Avg_BOD <- location_data$BOD_Frequency
+location_data$Avg_COD <- location_data$COD_Frequency
+location_data$Avg_Turbidity <- location_data$Turbidity_Frequency
+location_data$Avg_DO <- location_data$DO_Frequency
+location_data$Avg_SS <- location_data$SS_Frequency
+location_data$Avg_EC <- location_data$EC_Frequency
+location_data$Avg_TDS <- location_data$TDS_Frequency
+location_data$Avg_T_Alkalinity <- location_data$T_Alkalinity_Frequency
+
+# Convert to sf object (spatial object)
+location_sf <- st_as_sf(location_data, coords = c("Longitude", "Latitude"), crs = 4326)
+
+# Add color logic based on BOD_Frequency (adjust for other parameters if desired)
+location_sf$color <- ifelse(location_sf$BOD_Frequency > 25, "red", 
+                            ifelse(location_sf$BOD_Frequency > 20, "orange", "green"))
+
+# Define custom icons based on color
+location_sf$icon <- ifelse(location_sf$color == "red", 
+                           makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/4/49/Red_dot.svg", iconWidth = 20, iconHeight = 20),
+                           ifelse(location_sf$color == "orange", 
+                                  makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/6/6b/Orange_dot.svg", iconWidth = 20, iconHeight = 20),
+                                  makeIcon(iconUrl = "https://upload.wikimedia.org/wikipedia/commons/5/53/Green_dot.svg", iconWidth = 20, iconHeight = 20)))
+
+# Corrected interactive map using geometry
+map <- leaflet(location_sf) %>%
+  addTiles() %>%  # Base map layer
+  addMarkers(
+    data = location_sf,  # Use geometry directly from sf object
+    popup = ~paste("<b>", Location, "</b><br>",
+                   "pH Frequency: ", pH_Frequency, "<br>",
+                   "BOD Frequency: ", BOD_Frequency, "<br>",
+                   "COD Frequency: ", COD_Frequency, "<br>",
+                   "Avg pH: ", Avg_pH, "<br>",
+                   "Avg BOD: ", Avg_BOD, "<br>",
+                   "Avg COD: ", Avg_COD, "<br>",
+                   "Avg Turbidity: ", Avg_Turbidity, "<br>",
+                   "Avg DO: ", Avg_DO, "<br>",
+                   "Avg SS: ", Avg_SS, "<br>",
+                   "Avg EC: ", Avg_EC, "<br>",
+                   "Avg TDS: ", Avg_TDS, "<br>",
+                   "Avg T-Alkalinity: ", Avg_T_Alkalinity),
+    icon = ~icon
+  ) %>%
+  addProviderTiles("Esri.WorldImagery")
+
+# Save the map as an HTML file
+saveWidget(map, "Water_Quality_Map_Corrected_Geometry.html", selfcontained = TRUE)
+
+
+
+
+####Use webshot Package in R to Capture the Map####
+install.packages("webshot")
+webshot::install_phantomjs()  # This installs PhantomJS for rendering the web page
+
+
+library(htmlwidgets)
+saveWidget(map, "Water_Quality_Map.html")
+
+
+
+library(webshot)
+webshot("Water_Quality_Map.html", "Water_Quality_Map.png", vwidth = 1200, vheight = 800)
+
+
+
+
+
+
+
+
+
+
+
+####violin plots####
+# List all unique parameters
+parameter_list <- tidy_data %>%
+  distinct(Parameter)
+
+# View the result
+print(parameter_list)
+
+
+
+str(tidy_data)
+head(tidy_data)
+#Get a List of Unique Parameters
+unique_parameters <- tidy_data %>%
+  distinct(Parameter) %>%
+  arrange(Parameter)
+
+print(unique_parameters)
+
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# Updated reference values
+reference_values <- tibble(
+  Parameter = c("pH", "DO", "BOD", "COD", "TDS", "Turbidity", "Chloride", 
+                "SS", "T-Alkalinity", "EC"),  
+  Reference = c(6.5, 6.0, 3.0, 10.0, 500, 1.0, 250, 30, 120, 1500)
+)
+
+# Merge reference values with the dataset
+tidy_data_with_ref <- tidy_data %>%
+  left_join(reference_values, by = "Parameter")
+
+# Create a function to plot violin plots for a single parameter
+create_violin_plot <- function(data, parameter_name) {
+  data_filtered <- data %>% filter(Parameter == parameter_name)
+  
+  ggplot(data_filtered, aes(x = Location, y = Value, fill = Location)) +
+    geom_violin(trim = TRUE, alpha = 0.7) +
+    geom_hline(aes(yintercept = Reference), color = "red", linetype = "dashed") +
+    geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.5) +
+    labs(title = parameter_name, y = "Value", x = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+# Generate violin plots for all parameters
+parameter_plots <- tidy_data_with_ref %>%
+  distinct(Parameter) %>%
+  pull(Parameter) %>%
+  map(~ create_violin_plot(tidy_data_with_ref, .x))
+
+# Individual Plots
+library(ggplot2)
+library(dplyr)
+library(purrr)  # For the `map()` function
+library(patchwork)  # For combining plots
+
+# Test a single parameter
+create_violin_plot <- function(data, parameter_name) {
+  data_filtered <- data %>% filter(Parameter == parameter_name)
+  
+  ggplot(data_filtered, aes(x = Location, y = Value, fill = Location)) +
+    geom_violin(trim = TRUE, alpha = 0.7) +
+    geom_hline(aes(yintercept = Reference), color = "red", linetype = "dashed") +
+    geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.5) +
+    labs(title = parameter_name, y = "Value", x = NULL) +
+    theme_minimal(base_size = 14) +
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+# Test for one parameter, e.g., "pH"
+test_plot <- create_violin_plot(tidy_data_with_ref, "pH")
+print(test_plot)
+
+
+
+
+#more professional
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(purrr)      # For the `map()` function
+library(patchwork)  # For combining plots
+
+# Define a function to create a violin plot for a given parameter
+create_violin_plot <- function(data, parameter_name) {
+  data_filtered <- data %>% filter(Parameter == parameter_name)
+  
+  ggplot(data_filtered, aes(x = Location, y = Value, fill = Location)) +
+    geom_violin(trim = TRUE, alpha = 0.7) +
+    geom_hline(aes(yintercept = Reference), color = "red", linetype = "dashed", linewidth = 0.8) +
+    geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.5, color = "black") +
+    labs(
+      title = paste("Distribution of", parameter_name),
+      y = "Observed Value",
+      x = NULL
+    ) +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "none",
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      plot.title = element_text(face = "bold", size = 16)
+    )
+}
+
+# Example: Test the function with a single parameter (e.g., "pH")
+test_plot <- create_violin_plot(tidy_data_with_ref, "pH")
+print(test_plot)
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+library(purrr)
+
+# Enhanced Violin Plot Function
+create_violin_plot <- function(data, parameter_name) {
+  data_filtered <- data %>% filter(Parameter == parameter_name)
+  
+  ggplot(data_filtered, aes(x = Location, y = Value, fill = Location)) +
+    geom_violin(trim = TRUE, alpha = 0.7) +
+    geom_hline(
+      aes(yintercept = Reference),
+      data = data.frame(Reference = unique(data_filtered$Reference)),
+      color = "red",
+      linetype = "dashed"
+    ) +
+    geom_boxplot(width = 0.1, outlier.shape = NA, alpha = 0.5) +
+    labs(title = paste("Violin Plot for", parameter_name), y = "Value", x = "Location") +
+    scale_y_continuous(
+      limits = c(0, max(c(data_filtered$Value, data_filtered$Reference), na.rm = TRUE) * 1.2)
+    ) +  # Adjust y-axis limits
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "none",
+      axis.text.x = element_text(angle = 45, hjust = 1)
+    )
+}
+
+# Directory for saving plots
+output_dir <- "plots"
+if (!dir.exists(output_dir)) dir.create(output_dir)
+
+# Generate and save individual plots for each parameter
+tidy_data_with_ref %>%
+  distinct(Parameter) %>%
+  pull(Parameter) %>%
+  walk(~ {
+    parameter_plot <- create_violin_plot(tidy_data_with_ref, .x)
+    ggsave(
+      filename = file.path(output_dir, paste0(.x, "_violin_plot.png")),
+      plot = parameter_plot,
+      width = 8,
+      height = 6,
+      dpi = 300
+    )
+  })
+
+message("Plots saved in the 'plots' directory.")
+
+
+
+glimpse(tidy_data)
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+# Example: Filter data for specific locations and parameters (e.g., "Mirpur Bridge" and "TDS")
+mirpur_data <- tidy_data %>%
+  filter(Location == "Mirpur Bridge" & Parameter == "TDS")
+
+# Summary of TDS data
+summary(mirpur_data)
+
+# Plot TDS over time (e.g., by Year or Month)
+ggplot(mirpur_data, aes(x = Year, y = Value)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "TDS Over Time at Mirpur Bridge", x = "Year", y = "TDS (mg/L)") +
+  theme_minimal()
+
+# Example: Plotting multiple parameters over time (e.g., "pH", "DO", and "TDS")
+multiple_params <- tidy_data %>%
+  filter(Location == "Mirpur Bridge" & Parameter %in% c("pH", "DO", "TDS"))
+
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Multiple Parameters Over Time at Mirpur Bridge", x = "Year", y = "Value") +
+  theme_minimal()
+
+
+
+
+unique(tidy_data$Location)
+
+
+# Load necessary libraries
+
+
+
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+# Filter data for Kamrangir Char location and selected parameters
+Kamrangirchar_data <- tidy_data %>%
+  filter(Location == "Kamrangir Char" & 
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom colors for each parameter
+custom_colors <- c("pH" = "blue", "DO" = "green", "TDS" = "orange", "BOD" = "red", "COD" = "purple", 
+                   "Turbidity" = "cyan", "Chloride" = "darkgray", "SS" = "darkcyan", "T-Alkalinity" = "pink", "EC" = "brown")
+
+# Summary of Kamrangirchar data
+summary(Kamrangirchar_data)
+
+# Plot multiple parameters over time at Kamrangirchar
+ggplot(Kamrangirchar_data, aes(x = Year, y = Value, color = Parameter, group = Parameter)) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  geom_point(size = 3) +   # Larger points for emphasis
+  scale_color_manual(values = custom_colors) +  # Custom colors for parameters
+  labs(
+    title = "Trends of Water Quality Parameters Over Time at Kamrangirchar",
+    x = "Year",
+    y = "Concentration (mg/L)"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.caption = element_text(size = 10, hjust = 1)
+  ) +
+  guides(color = guide_legend(title = "Parameters"))
+
+# Example: Plotting multiple parameters over time for Mirpur Bridge (assuming data for Mirpur Bridge exists)
+multiple_params <- tidy_data %>%
+  filter(Location == "Mirpur Bridge" & Parameter %in% c("pH", "DO", "TDS"))
+
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Multiple Parameters Over Time at Mirpur Bridge", x = "Year", y = "Value") +
+  theme_minimal()
+
+
+unique(tidy_data$Location)
+
+
+library(ggplot2)
+library(dplyr)
+
+# Filter the data for selected parameters and locations
+multiple_params <- tidy_data %>%
+  filter(Location %in% c("Mirpur Bridge", "Hazaribag", "Kamrangirchar") & 
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom colors for each parameter
+custom_colors <- c("pH" = "blue", "DO" = "green", "TDS" = "orange", "BOD" = "red", "COD" = "purple", 
+                   "Turbidity" = "brown", "Chloride" = "yellow", "SS" = "cyan", "T-Alkalinity" = "pink", "EC" = "grey")
+
+# Create a professional plot
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter, group = interaction(Parameter, Location))) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  geom_point(size = 3) +  # Larger points for emphasis
+  scale_color_manual(values = custom_colors) +  # Custom colors for clarity
+  facet_wrap(~Location, ncol = 1, scales = "free_y") +  # Separate panels for each location
+  labs(
+    title = "Trends of Water Quality Parameters Over Time Across Locations",  # Descriptive title
+    x = "Year",  # X-axis label
+    y = "Concentration (mg/L)",  # Y-axis label (update based on your units)
+    caption = "Source: Your Dataset (provide source if applicable)"  # Source of the data
+  ) +
+  theme_minimal(base_size = 15) +  # Clean, minimalist theme for better readability
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),  # Title customization (bold, centered)
+    axis.title = element_text(size = 14),  # Axis title size
+    axis.text = element_text(size = 12),  # Axis text size
+    legend.title = element_text(size = 14),  # Legend title size
+    legend.text = element_text(size = 12),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom for better positioning
+    strip.text = element_text(size = 14, face = "bold")  # Panel titles for locations
+  ) +
+  guides(color = guide_legend(title = "Parameters"))  # Customizing the legend title
+
+
+
+
+
+
+# Filter the data for selected parameters and locations
+multiple_params <- tidy_data %>%
+  filter(Location %in% c("Mirpur Bridge", "Hazaribag", "Kamrangirchar") & 
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom colors for each parameter with brighter tones
+custom_colors <- c("pH" = "#1f77b4", "DO" = "#2ca02c", "TDS" = "#ff7f0e", "BOD" = "#d62728", 
+                   "COD" = "#9467bd", "Turbidity" = "#8c564b", "Chloride" = "#e377c2", 
+                   "SS" = "#7f7f7f", "T-Alkalinity" = "#f7b500", "EC" = "#ff69b4")
+
+# Create a bright, professional plot
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter, group = interaction(Parameter, Location))) +
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_point(size = 4) +  # Larger points for emphasis and clarity
+  scale_color_manual(values = custom_colors) +  # Custom vibrant colors for clarity
+  facet_wrap(~Location, ncol = 1, scales = "free_y") +  # Separate panels for each location
+  labs(
+    title = "Trends of Water Quality Parameters Over Time Across Locations",  # Descriptive title
+    x = "Year",  # X-axis label
+    y = "Concentration (mg/L)",  # Y-axis label (update based on your units)
+    caption = "Source: Your Dataset (provide source if applicable)"  # Source of the data
+  ) +
+  theme_minimal(base_size = 16) +  # Clean, minimalist theme for better readability
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Title customization (bold, centered)
+    plot.subtitle = element_text(size = 14, hjust = 0.5, color = "#666666"),  # Subtitle styling
+    axis.title = element_text(size = 16, face = "bold"),  # Axis title size
+    axis.text = element_text(size = 14),  # Axis text size
+    legend.title = element_text(size = 16, face = "bold"),  # Legend title size
+    legend.text = element_text(size = 14),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom for better positioning
+    strip.text = element_text(size = 16, face = "bold"),  # Panel titles for locations
+    panel.grid = element_line(color = "gray90", size = 0.5),  # Subtle gridlines for clarity
+    panel.grid.major = element_line(linetype = "dashed")  # Dash gridlines for easy reading
+  ) +
+  guides(color = guide_legend(title = "Parameters"))  # Customizing the legend title
+
+
+
+
+
+
+# Filter the data for selected parameters and locations
+multiple_params <- tidy_data %>%
+  filter(Location %in% c("Mirpur Bridge", "Hazaribag", "Kamrangirchar") & 
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom professional colors for each parameter (more muted and refined tones)
+custom_colors <- c("pH" = "#1f77b4",    # Blue
+                   "DO" = "#2ca02c",    # Green
+                   "TDS" = "#ff7f0e",   # Orange
+                   "BOD" = "#d62728",   # Red
+                   "COD" = "#9467bd",   # Purple
+                   "Turbidity" = "#8c564b",  # Brown
+                   "Chloride" = "#e377c2",   # Pink
+                   "SS" = "#7f7f7f",    # Gray
+                   "T-Alkalinity" = "#f7b500", # Yellow
+                   "EC" = "#ff69b4")    # Light Pink
+
+# Create a professional plot with refined colors
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter, group = interaction(Parameter, Location))) +
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_point(size = 4) +  # Larger points for emphasis and clarity
+  scale_color_manual(values = custom_colors) +  # Custom refined professional colors
+  facet_wrap(~Location, ncol = 1, scales = "free_y") +  # Separate panels for each location
+  labs(
+    title = "Trends of Water Quality Parameters Over Time Across Locations",  # Descriptive title
+    x = "Year",  # X-axis label
+    y = "Concentration (mg/L)",  # Y-axis label (update based on your units)
+    caption = "Source: Your Dataset (provide source if applicable)"  # Source of the data
+  ) +
+  theme_minimal(base_size = 16) +  # Clean, minimalist theme for better readability
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Title customization (bold, centered)
+    plot.subtitle = element_text(size = 14, hjust = 0.5, color = "#666666"),  # Subtitle styling
+    axis.title = element_text(size = 16, face = "bold"),  # Axis title size
+    axis.text = element_text(size = 14),  # Axis text size
+    legend.title = element_text(size = 16, face = "bold"),  # Legend title size
+    legend.text = element_text(size = 14),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom for better positioning
+    strip.text = element_text(size = 16, face = "bold"),  # Panel titles for locations
+    panel.grid = element_line(color = "gray90", size = 0.5),  # Subtle gridlines for clarity
+    panel.grid.major = element_line(linetype = "dashed")  # Dash gridlines for easy reading
+  ) +
+  guides(color = guide_legend(title = "Parameters"))  # Customizing the legend title
+
+
+
+
+
+
+
+# Filter the data for selected parameters and locations
+multiple_params <- tidy_data %>%
+  filter(Location %in% c("Mirpur Bridge", "Hazaribag", "Kamrangirchar") & 
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom professional colors for each parameter (more muted and refined tones)
+custom_colors <- c("pH" = "#1f77b4",    # Blue
+                   "DO" = "#2ca02c",    # Green
+                   "TDS" = "#ff7f0e",   # Orange
+                   "BOD" = "#d62728",   # Red
+                   "COD" = "#9467bd",   # Purple
+                   "Turbidity" = "#8c564b",  # Brown
+                   "Chloride" = "#e377c2",   # Pink
+                   "SS" = "#7f7f7f",    # Gray
+                   "T-Alkalinity" = "#f7b500", # Yellow
+                   "EC" = "#ff69b4")    # Light Pink
+
+# Generate a plot for Mirpur Bridge
+mirpur_plot <- ggplot(multiple_params %>% filter(Location == "Mirpur Bridge"), 
+                      aes(x = Year, y = Value, color = Parameter, group = interaction(Parameter, Location))) +
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_point(size = 4) +  # Larger points for emphasis and clarity
+  scale_color_manual(values = custom_colors) +  # Custom refined professional colors
+  labs(
+    title = "Trends of Water Quality Parameters at Mirpur Bridge",  # Descriptive title
+    x = "Year",  # X-axis label
+    y = "Concentration (mg/L)",  # Y-axis label (update based on your units)
+  ) +
+  theme_minimal(base_size = 16) +  # Clean, minimalist theme for better readability
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Title customization (bold, centered)
+    axis.title = element_text(size = 16, face = "bold"),  # Axis title size
+    axis.text = element_text(size = 14),  # Axis text size
+    legend.title = element_text(size = 16, face = "bold"),  # Legend title size
+    legend.text = element_text(size = 14),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom for better positioning
+    strip.text = element_text(size = 16, face = "bold"),  # Panel titles for locations
+    panel.grid = element_line(color = "gray90", size = 0.5),  # Subtle gridlines for clarity
+    panel.grid.major = element_line(linetype = "dashed")  # Dash gridlines for easy reading
+  ) +
+  guides(color = guide_legend(title = "Parameters"))  # Customizing the legend title
+
+# Generate a plot for Hazaribag
+hazaribag_plot <- ggplot(multiple_params %>% filter(Location == "Hazaribag"), 
+                         aes(x = Year, y = Value, color = Parameter, group = interaction(Parameter, Location))) +
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_point(size = 4) +  # Larger points for emphasis and clarity
+  scale_color_manual(values = custom_colors) +  # Custom refined professional colors
+  labs(
+    title = "Trends of Water Quality Parameters at Hazaribag",  # Descriptive title
+    x = "Year",  # X-axis label
+    y = "Concentration (mg/L)",  # Y-axis label (update based on your units)
+  ) +
+  theme_minimal(base_size = 16) +  # Clean, minimalist theme for better readability
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Title customization (bold, centered)
+    axis.title = element_text(size = 16, face = "bold"),  # Axis title size
+    axis.text = element_text(size = 14),  # Axis text size
+    legend.title = element_text(size = 16, face = "bold"),  # Legend title size
+    legend.text = element_text(size = 14),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom for better positioning
+    strip.text = element_text(size = 16, face = "bold"),  # Panel titles for locations
+    panel.grid = element_line(color = "gray90", size = 0.5),  # Subtle gridlines for clarity
+    panel.grid.major = element_line(linetype = "dashed")  # Dash gridlines for easy reading
+  ) +
+  guides(color = guide_legend(title = "Parameters"))  # Customizing the legend title
+
+# Print the plots
+mirpur_plot
+hazaribag_plot
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+
+# Filter the data for the selected parameters and locations
+multiple_params <- tidy_data %>%
+  filter(Location %in% c("Mirpur Bridge", "Hazaribag", "Kamrangirchar") &
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom colors for parameters
+custom_colors <- c(
+  "pH" = "blue", "DO" = "green", "TDS" = "orange", 
+  "BOD" = "red", "COD" = "purple", "Turbidity" = "brown", 
+  "Chloride" = "pink", "SS" = "cyan", "T-Alkalinity" = "darkgreen", "EC" = "gray"
+)
+
+# Create a professional plot
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter, group = Parameter)) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  geom_point(size = 3) +  # Larger points for emphasis
+  scale_color_manual(values = custom_colors) +  # Custom colors for parameters
+  facet_wrap(~Location, ncol = 1) +  # Separate panels for each location
+  labs(
+    title = "Trends of Water Quality Parameters Over Time Across Locations",
+    x = "Year",
+    y = "Concentration (mg/L)",  # Update based on your units
+  ) +
+  theme_minimal(base_size = 15) +  # Clean, minimalist theme
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),  # Title customization
+    axis.title = element_text(size = 14),  # Axis title size
+    axis.text = element_text(size = 12),  # Axis text size
+    legend.title = element_text(size = 14),  # Legend title size
+    legend.text = element_text(size = 12),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom
+    plot.caption = element_text(size = 10, hjust = 1)  # Caption positioning
+  ) +
+  guides(color = guide_legend(title = "Parameters"))  # Customizing the legend title
+
+
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(dplyr)
+
+# Filter the data for the selected parameters and locations
+multiple_params <- tidy_data %>%
+  filter(Location %in% c("Mirpur Bridge", "Hazaribag", "Kamrangirchar") &
+           Parameter %in% c("pH", "DO", "TDS", "BOD", "COD", "Turbidity", "Chloride", "SS", "T-Alkalinity", "EC"))
+
+# Define custom colors for the parameters (replacing "teal" with "darkcyan")
+custom_colors <- c(
+  "pH" = "blue", "DO" = "green", "TDS" = "orange", "BOD" = "red",
+  "COD" = "purple", "Turbidity" = "cyan", "Chloride" = "darkgray",
+  "SS" = "darkcyan", "T-Alkalinity" = "pink", "EC" = "brown"
+)
+
+# Create the plot
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter, group = Parameter)) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  geom_point(size = 3) +   # Larger points for emphasis
+  scale_color_manual(values = custom_colors) +  # Custom colors for parameters
+  facet_grid(. ~ Location) +  # Use facet_grid to display all locations in a row
+  labs(
+    title = "Trends of Water Quality Parameters Over Time Across Locations",
+    x = "Year",
+    y = "Concentration (mg/L)",
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.caption = element_text(size = 10, hjust = 1)
+  ) +
+  guides(color = guide_legend(title = "Parameters"))
+
+
+
+
+
+
+# Filter the data for Kamrangirchar location (including all parameters)
+multiple_params <- tidy_data %>%
+  filter(Location == "Kamrangirchar")
+
+# Define custom colors for the parameters
+custom_colors <- c(
+  "pH" = "blue", "DO" = "green", "TDS" = "orange", "BOD" = "red",
+  "COD" = "purple", "Turbidity" = "cyan", "Chloride" = "darkgray",
+  "SS" = "darkcyan", "T-Alkalinity" = "pink", "EC" = "brown"
+)
+
+# Create the plot
+ggplot(multiple_params, aes(x = Year, y = Value, color = Parameter, group = Parameter)) +
+  geom_line(size = 1.2) +  # Thicker lines for better visibility
+  geom_point(size = 3) +   # Larger points for emphasis
+  scale_color_manual(values = custom_colors) +  # Custom colors for parameters
+  labs(
+    title = "Trends of Water Quality Parameters Over Time at Kamrangirchar",
+    x = "Year",
+    y = "Concentration (mg/L)"
+  ) +
+  theme_minimal(base_size = 15) +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 14),
+    axis.text = element_text(size = 12),
+    legend.title = element_text(size = 14),
+    legend.text = element_text(size = 12),
+    legend.position = "bottom",
+    plot.caption = element_text(size = 10, hjust = 1)
+  ) +
+  guides(color = guide_legend(title = "Parameters"))
+
+
+
+
+# bivariate plot
+
+
+
+
+
+
+
+# Required Libraries
+library(dplyr)
+library(ggplot2)
+
+# Load your dataset
+# Assuming your dataset is loaded as `tidy_data`
+
+# Normalize function based on WHO/EPA guidelines
+normalize <- function(value, standard, parameter) {
+  if (parameter %in% c("pH", "DO")) {
+    (value - standard) / (8.5 - 6.5)  # pH example range
+  } else {
+    value / standard  # General case for pollutants
+  }
+}
+
+
+
+
+
+
+# Required Libraries
+
+
+
+
+# Ensure the normalize function works row-by-row
+normalize <- function(value, reference, parameter) {
+  if (parameter %in% c("pH", "DO")) {
+    (value - reference) / (8.5 - 6.5)  # pH and DO specific normalization
+  } else {
+    value / reference  # General case for other parameters
+  }
+}
+
+# Calculate weights from the dataset
+weights <- tidy_data %>%
+  group_by(Parameter) %>%
+  summarize(Total = sum(Value, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(Weight = Total / sum(Total, na.rm = TRUE)) %>%
+  select(Parameter, Weight)
+
+# Reference values (based on WHO/EPA)
+reference_values <- tibble(
+  Parameter = c("pH", "DO", "BOD", "COD", "TDS", "Turbidity", "Chloride", 
+                "SS", "T-Alkalinity", "EC"),
+  Reference = c(6.5, 6.0, 3.0, 10.0, 500, 1.0, 250, 30, 120, 1500)
+)
+
+# Join weights and references to tidy data
+tidy_data <- tidy_data %>%
+  left_join(weights, by = "Parameter") %>%
+  left_join(reference_values, by = "Parameter")
+
+# Debugging: Ensure columns exist after joining
+print(head(tidy_data))
+
+# Calculate sub-index (normalized values)
+tidy_data <- tidy_data %>%
+  rowwise() %>%  # Process each row independently
+  mutate(
+    SubIndex = normalize(Value, Reference, Parameter) * Weight
+  ) %>%
+  ungroup()  # Ungroup to finalize the result
+
+
+
+
+
+
+#### Step 1: Calculate EWQI####
+tidy_data <- tidy_data %>%
+  group_by(Location, Year) %>%
+  summarize(
+    EWQI = sum(SubIndex, na.rm = TRUE)
+  ) %>%
+  ungroup()
+
+#### Step 2: Categorize EWQI Scores####
+tidy_data <- tidy_data %>%
+  mutate(
+    Quality = case_when(
+      EWQI < 50 ~ "Excellent",
+      EWQI >= 50 & EWQI < 100 ~ "Good",
+      EWQI >= 100 & EWQI < 200 ~ "Poor",
+      EWQI >= 200 ~ "Very Poor"
+    )
+  )
+
+# Step 3.1: Time-Series Plot
+ggplot(tidy_data, aes(x = Year, y = EWQI, color = Location)) +
+  geom_line(size = 1) +
+  geom_point(size = 2) +
+  labs(
+    title = "Time-Series Analysis of EWQI",
+    x = "Year",
+    y = "EWQI"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+
+
+library(ggplot2)
+
+# Time series plot for EWQI trends
+ggplot(tidy_data, aes(x = Year, y = EWQI, color = Location, group = Location)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  labs(
+    title = "EWQI Trends Over the Years",
+    x = "Year",
+    y = "Environmental Water Quality Index (EWQI)",
+    color = "Location"
+  ) +
+  theme_minimal(base_size = 14)
+
+
+
+
+
+# Time series plot for EWQI trends with legend at the bottom
+ggplot(tidy_data, aes(x = Year, y = EWQI, color = Location, group = Location)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  labs(
+    title = "EWQI Trends Over the Years",
+    x = "Year",
+    y = "Environmental Water Quality Index (EWQI)",
+    color = "Location"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+
+
+
+
+
+# Time series plot for EWQI trends with legend at the bottom
+ggplot(tidy_data, aes(x = Year, y = EWQI, color = Location, group = Location)) +
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_point(size = 4) +  # Larger points for emphasis and clarity
+  labs(
+    title = "EWQI Trends Over the Years",  # Title of the plot
+    x = "Year",  # X-axis label
+    y = "Environmental Water Quality Index (EWQI)",  # Y-axis label
+    color = "Location"  # Legend title
+  ) +
+  scale_color_manual(values = c("Mirpur Bridge" = "#1f77b4",   # Blue
+                                "Hazaribag" = "#ff7f0e",    # Orange
+                                "Kamrangirchar" = "#2ca02c")) +  # Green
+  theme_minimal(base_size = 16) +  # Clean, minimalist theme for better readability
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),  # Title customization (bold, centered)
+    plot.subtitle = element_text(size = 14, hjust = 0.5, color = "#666666"),  # Subtitle styling
+    axis.title = element_text(size = 16, face = "bold"),  # Axis title size
+    axis.text = element_text(size = 14),  # Axis text size
+    legend.title = element_text(size = 16, face = "bold"),  # Legend title size
+    legend.text = element_text(size = 14),  # Legend text size
+    legend.position = "bottom",  # Legend at the bottom for better positioning
+    panel.grid = element_line(color = "gray90", size = 0.5),  # Subtle gridlines for clarity
+    panel.grid.major = element_line(linetype = "dashed")  # Dash gridlines for easy reading
+  ) +
+  guides(color = guide_legend(title = "Location"))  # Customizing the legend title
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Assuming 'tidy_data' has columns: Year, EWQI, Location
+# Here is how you can modify your ggplot code
+
+# First, ensure that all locations are represented in the data even if no data points are available
+# This sets up a complete set of locations for proper legend display
+full_locations <- data.frame(
+  Location = c("Hazaribag", "Mirpur Bridge", "Kamrangirchar")
+)
+tidy_data <- tidy_data %>%
+  right_join(full_locations, by = "Location") %>%
+  drop_na(Year, EWQI)  # Assuming you might want to remove NA entries that appear from joining
+
+# Plotting the data
+ggplot(tidy_data, aes(x = Year, y = EWQI, color = Location, group = Location)) +
+  geom_line(size = 1.5) +  # Thicker lines for better visibility
+  geom_point(size = 4) +  # Larger points for emphasis and clarity
+  labs(
+    title = "EWQI Trends Over the Years",
+    x = "Year",
+    y = "Environmental Water Quality Index (EWQI)",
+    color = "Location"
+  ) +
+  scale_color_manual(values = c("Hazaribag" = "#ff7f0e",  # Orange
+                                "Mirpur Bridge" = "#1f77b4",  # Blue
+                                "Kamrangirchar" = "#2ca02c"),  # Green
+                     labels = c("Hazaribag", "Mirpur Bridge", "Kamrangirchar")) +
+  theme_minimal(base_size = 16) +
+  theme(
+    plot.title = element_text(size = 20, face = "bold", hjust = 0.5, color = "#333333"),
+    axis.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 14),
+    legend.title = element_text(size = 16, face = "bold"),
+    legend.text = element_text(size = 14),
+    legend.position = "bottom",
+    panel.grid.major = element_line(linetype = "dashed", color = "gray90"),
+    panel.grid.minor = element_blank()
+  ) +
+  guides(color = guide_legend(title = "Location"))
+
+# Note: Ensure you have data for all locations or handle cases where data might not exist for a location.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#Spatial Plot for EWQI#
+# Required Libraries
+library(dplyr)
+library(ggplot2)
+
+# Verified location data (example format, replace with your authentic data)
+locations <- tibble(
+  Location = c("Hazaribag", "Mirpur Bridge", "Dhaka City"),
+  Latitude = c(23.789, 23.812, 23.810),
+  Longitude = c(90.373, 90.416, 90.412)
+)
+
+# Merge spatial data with EWQI
+spatial_data <- tidy_data %>%
+  left_join(locations, by = "Location")
+
+# Check merged spatial data
+print(head(spatial_data))
+
+# Spatial Plot of EWQI
+ggplot(spatial_data, aes(x = Longitude, y = Latitude, color = EWQI, size = EWQI)) +
+  geom_point(alpha = 0.8) +
+  scale_color_gradient(low = "green", high = "red", name = "EWQI") +
+  scale_size_continuous(range = c(3, 10), name = "EWQI") +
+  labs(
+    title = "Spatial Distribution of Environmental Water Quality Index (EWQI)",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+
+
+
+
+####Spatial####
+df
+library(dplyr)
+library(tidyr)
+# Check column types
+str(df)
+
+# Convert monthly columns to numeric
+df_cleaned <- df %>%
+  mutate(across(starts_with("J"), as.numeric, .names = "cleaned_{col}"))
+
+# Pivot longer with cleaned data
+tidy_data <- df_cleaned %>%
+  pivot_longer(
+    cols = starts_with("cleaned_J"),  # Use the cleaned columns
+    names_to = "Month",
+    values_to = "Value"
+  ) %>%
+  filter(!is.na(Value)) %>%
+  mutate(
+    Month = case_when(
+      Month %in% c("cleaned_J...5", "cleaned_J...10", "cleaned_J...11") ~ "January",
+      Month == "cleaned_F" ~ "February",
+      Month == "cleaned_M...7" ~ "March",
+      Month == "cleaned_A...8" ~ "April",
+      Month == "cleaned_M...9" ~ "May",
+      Month == "cleaned_A...12" ~ "August",
+      Month == "cleaned_S" ~ "September",
+      Month == "cleaned_O" ~ "October",
+      Month == "cleaned_N" ~ "November",
+      Month == "cleaned_D" ~ "December",
+      TRUE ~ Month
+    )
+  ) %>%
+  select(Location, Year, Parameter, Month, Value)
+
+# Verify the cleaned dataset
+print(head(tidy_data))
+
+
+tidy_data <- tidy_data %>%
+  group_by(Location, Year, Parameter, Month) %>%
+  summarize(Value = mean(Value, na.rm = TRUE), .groups = "drop")
+
+
+
+
+
+
+
+
+install.packages("ggspatial")
+library(ggspatial)
+library(ggplot2)
+
+
+
+# Install ggspatial if not already installed
+install.packages("ggspatial")
+install.packages("prettymapr")
+
+library(prettymapr)
+
+
+
+
+# Create the map
+ggplot() +
+  annotation_map_tile(
+    "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  ) +
+  geom_point(
+    data = spatial_data,
+    aes(x = Longitude, y = Latitude, color = EWQI, size = EWQI),
+    alpha = 0.8
+  ) +
+  scale_color_gradient(low = "green", high = "red", name = "EWQI") +
+  scale_size_continuous(range = c(3, 10), name = "EWQI") +
+  labs(
+    title = "Spatial Distribution of EWQI in the Buriganga River",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ggplot() +
+  geom_point(
+    data = spatial_data,
+    aes(x = Longitude, y = Latitude, color = EWQI, size = EWQI),
+    alpha = 0.8
+  ) +
+  scale_color_gradient(low = "green", high = "red", name = "EWQI") +
+  scale_size_continuous(range = c(3, 10), name = "EWQI") +
+  labs(
+    title = "Spatial Distribution of EWQI in the Buriganga River",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    plot.title = element_text(hjust = 0.5)
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
